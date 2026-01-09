@@ -1,0 +1,336 @@
+import React, { useState, useEffect, useRef } from 'react';
+import {
+    View,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    FlatList,
+    StyleSheet,
+    KeyboardAvoidingView,
+    Platform,
+    ActivityIndicator,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { COLORS } from '../config';
+import socketService from '../services/socket';
+
+export default function ChatScreen() {
+    const [messages, setMessages] = useState([]);
+    const [inputText, setInputText] = useState('');
+    const [isConnected, setIsConnected] = useState(false);
+    const [isSending, setIsSending] = useState(false);
+    const flatListRef = useRef(null);
+    const userId = useRef('user_' + Math.random().toString(36).substr(2, 9)).current;
+    const typingTimeoutRef = useRef(null);
+    const isTypingRef = useRef(false);
+
+    useEffect(() => {
+        // Connect to WebSocket
+        socketService.connect();
+
+        // Set up event listeners
+        socketService.onMessageReceived((message) => {
+            setMessages((prev) => [...prev, message]);
+            setIsSending(false);
+        });
+
+        socketService.onAIMessage((message) => {
+            setMessages((prev) => [...prev, message]);
+        });
+
+        socketService.onAIBlock((block) => {
+            // Add AI block as a message
+            const message = {
+                id: Date.now() + Math.random(),
+                text: block.text,
+                sender: 'ai',
+                timestamp: block.timestamp,
+                group: block.group,
+            };
+            setMessages((prev) => [...prev, message]);
+        });
+
+        socketService.onError((error) => {
+            console.error('Socket error:', error);
+            setIsSending(false);
+        });
+
+        // Check connection status
+        const checkConnection = setInterval(() => {
+            setIsConnected(socketService.connected);
+        }, 1000);
+
+        return () => {
+            clearInterval(checkConnection);
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+            }
+            socketService.offMessageReceived();
+            socketService.offAIMessage();
+            socketService.offAIBlock();
+            socketService.offError();
+        };
+    }, []);
+
+    const handleTextChange = (text) => {
+        setInputText(text);
+
+        // Clear existing timeout
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+        }
+
+        // If text is not empty and user wasn't typing before, send typing start
+        if (text.length > 0 && !isTypingRef.current) {
+            isTypingRef.current = true;
+            socketService.sendTypingStatus(userId, true);
+        }
+
+        // If text is empty, send typing stop immediately
+        if (text.length === 0 && isTypingRef.current) {
+            isTypingRef.current = false;
+            socketService.sendTypingStatus(userId, false);
+            return;
+        }
+
+        // Set timeout to detect when user stops typing
+        if (text.length > 0) {
+            typingTimeoutRef.current = setTimeout(() => {
+                if (isTypingRef.current) {
+                    isTypingRef.current = false;
+                    socketService.sendTypingStatus(userId, false);
+                }
+            }, 1000); // 1 second of inactivity = stopped typing
+        }
+    };
+
+    const sendMessage = () => {
+        if (!inputText.trim() || !isConnected) return;
+
+        // Clear typing timeout and send typing stop
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+        }
+        if (isTypingRef.current) {
+            isTypingRef.current = false;
+            socketService.sendTypingStatus(userId, false);
+        }
+
+        setIsSending(true);
+        socketService.sendMessage(inputText.trim(), userId);
+        setInputText('');
+    };
+
+    const renderMessage = ({ item }) => {
+        const isUser = item.sender === 'user';
+        const isSystem = item.sender === 'system';
+
+        return (
+            <View style={[styles.messageContainer, isUser && styles.userMessageContainer]}>
+                <View
+                    style={[
+                        styles.messageBubble,
+                        isUser ? styles.userBubble : styles.aiBubble,
+                        isSystem && styles.systemBubble,
+                    ]}
+                >
+                    <Text style={[styles.messageText, isSystem && styles.systemText]}>
+                        {item.text}
+                    </Text>
+                    <Text style={styles.timestamp}>
+                        {new Date(item.timestamp).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                        })}
+                    </Text>
+                </View>
+            </View>
+        );
+    };
+
+    return (
+        <LinearGradient colors={[COLORS.background, '#1a0a2e']} style={styles.container}>
+            {/* Header */}
+            <View style={styles.header}>
+                <Text style={styles.headerTitle}>AI Chat</Text>
+                <View style={[styles.statusDot, isConnected && styles.statusConnected]} />
+            </View>
+
+            {/* Messages List */}
+            <FlatList
+                ref={flatListRef}
+                data={messages}
+                renderItem={renderMessage}
+                keyExtractor={(item) => item.id.toString()}
+                contentContainerStyle={styles.messagesList}
+                onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
+                ListEmptyComponent={
+                    <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyText}>Начните разговор с AI</Text>
+                        <Text style={styles.emptySubtext}>
+                            {isConnected ? 'Отправьте сообщение ниже' : 'Подключение к серверу...'}
+                        </Text>
+                    </View>
+                }
+            />
+
+            {/* Input Area */}
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+            >
+                <View style={styles.inputContainer}>
+                    <TextInput
+                        style={styles.input}
+                        value={inputText}
+                        onChangeText={handleTextChange}
+                        placeholder="Введите сообщение..."
+                        placeholderTextColor={COLORS.textSecondary}
+                        multiline
+                        maxLength={1000}
+                        editable={isConnected && !isSending}
+                    />
+                    <TouchableOpacity
+                        style={[
+                            styles.sendButton,
+                            (!inputText.trim() || !isConnected || isSending) && styles.sendButtonDisabled,
+                        ]}
+                        onPress={sendMessage}
+                        disabled={!inputText.trim() || !isConnected || isSending}
+                    >
+                        {isSending ? (
+                            <ActivityIndicator color="#fff" size="small" />
+                        ) : (
+                            <Text style={styles.sendButtonText}>→</Text>
+                        )}
+                    </TouchableOpacity>
+                </View>
+            </KeyboardAvoidingView>
+        </LinearGradient>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingTop: 60,
+        paddingBottom: 20,
+    },
+    headerTitle: {
+        fontSize: 28,
+        fontWeight: 'bold',
+        color: COLORS.text,
+    },
+    statusDot: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        backgroundColor: COLORS.error,
+    },
+    statusConnected: {
+        backgroundColor: COLORS.success,
+    },
+    messagesList: {
+        paddingHorizontal: 16,
+        paddingBottom: 16,
+        flexGrow: 1,
+    },
+    messageContainer: {
+        marginBottom: 12,
+        alignItems: 'flex-start',
+    },
+    userMessageContainer: {
+        alignItems: 'flex-end',
+    },
+    messageBubble: {
+        maxWidth: '80%',
+        padding: 14,
+        borderRadius: 20,
+    },
+    userBubble: {
+        backgroundColor: COLORS.userMessage,
+        borderBottomRightRadius: 4,
+    },
+    aiBubble: {
+        backgroundColor: COLORS.aiMessage,
+        borderBottomLeftRadius: 4,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+    },
+    systemBubble: {
+        backgroundColor: COLORS.surfaceLight,
+        borderColor: COLORS.secondary,
+    },
+    messageText: {
+        fontSize: 16,
+        color: COLORS.text,
+        lineHeight: 22,
+    },
+    systemText: {
+        color: COLORS.secondary,
+    },
+    timestamp: {
+        fontSize: 11,
+        color: COLORS.textSecondary,
+        marginTop: 6,
+        alignSelf: 'flex-end',
+    },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingTop: 100,
+    },
+    emptyText: {
+        fontSize: 20,
+        color: COLORS.text,
+        fontWeight: '600',
+        marginBottom: 8,
+    },
+    emptySubtext: {
+        fontSize: 14,
+        color: COLORS.textSecondary,
+    },
+    inputContainer: {
+        flexDirection: 'row',
+        padding: 16,
+        backgroundColor: COLORS.surface,
+        borderTopWidth: 1,
+        borderTopColor: COLORS.border,
+        alignItems: 'flex-end',
+    },
+    input: {
+        flex: 1,
+        backgroundColor: COLORS.surfaceLight,
+        borderRadius: 24,
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        fontSize: 16,
+        color: COLORS.text,
+        maxHeight: 100,
+        marginRight: 12,
+    },
+    sendButton: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: COLORS.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    sendButtonDisabled: {
+        backgroundColor: COLORS.surfaceLight,
+        opacity: 0.5,
+    },
+    sendButtonText: {
+        fontSize: 24,
+        color: '#fff',
+        fontWeight: 'bold',
+    },
+});
