@@ -8,11 +8,11 @@ if (!isLocalhost) {
 }
 
 // Backend WebSocket server URL
-export const SOCKET_URL = isDev ? 'http://localhost:3000' : 'http://129.212.231.107:3000';
+export const SOCKET_URL = isDev ? 'http://localhost:3000' : 'https://etherial-vqt7t.ondigitalocean.app';
 
 // API configuration
 export const API_CONFIG = {
-    baseURL: isDev ? 'http://localhost:3000' : 'http://129.212.231.107:3000',
+    baseURL: isDev ? 'http://localhost:3000' : 'https://etherial-vqt7t.ondigitalocean.app',
     timeout: 10000,
 };
 
