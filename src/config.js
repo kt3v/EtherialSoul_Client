@@ -1,9 +1,18 @@
+// Development mode flag
+let isDev = false;
+
+// Auto-detect environment - force production if not on localhost
+const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+if (!isLocalhost) {
+    isDev = false;
+}
+
 // Backend WebSocket server URL
-export const SOCKET_URL = 'http://localhost:3000';
+export const SOCKET_URL = isDev ? 'http://localhost:3000' : 'http://129.212.231.107:3000';
 
 // API configuration
 export const API_CONFIG = {
-    baseURL: 'http://localhost:3000',
+    baseURL: isDev ? 'http://localhost:3000' : 'http://129.212.231.107:3000',
     timeout: 10000,
 };
 
