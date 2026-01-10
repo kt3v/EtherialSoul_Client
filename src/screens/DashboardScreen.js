@@ -1,11 +1,34 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../config';
+import { useAuth } from '../contexts/AuthContext';
+import AuthModal from '../components/AuthModal';
 
 export default function DashboardScreen({ navigation }) {
+    const [authModalVisible, setAuthModalVisible] = useState(false);
+    const { user, signOut } = useAuth();
+
+    const handleAuthAction = () => {
+        if (user) {
+            signOut();
+        } else {
+            setAuthModalVisible(true);
+        }
+    };
+
     return (
         <LinearGradient colors={[COLORS.background, '#0a1a2e']} style={styles.container}>
+            <View style={styles.header}>
+                <TouchableOpacity
+                    style={styles.loginButton}
+                    onPress={handleAuthAction}
+                >
+                    <Text style={styles.loginButtonText}>
+                        {user ? 'Выйти' : 'Login'}
+                    </Text>
+                </TouchableOpacity>
+            </View>
             <View style={styles.content}>
                 <View style={styles.iconContainer}>
                     <LinearGradient
@@ -49,6 +72,10 @@ export default function DashboardScreen({ navigation }) {
                     </LinearGradient>
                 </TouchableOpacity>
             </View>
+            <AuthModal
+                visible={authModalVisible}
+                onClose={() => setAuthModalVisible(false)}
+            />
         </LinearGradient>
     );
 }
@@ -56,6 +83,24 @@ export default function DashboardScreen({ navigation }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        paddingHorizontal: 20,
+        paddingTop: 60,
+        paddingBottom: 20,
+    },
+    loginButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        backgroundColor: COLORS.primary,
+        borderRadius: 8,
+    },
+    loginButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
     },
     content: {
         flex: 1,

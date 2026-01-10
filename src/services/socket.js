@@ -1,5 +1,6 @@
 import { io } from 'socket.io-client';
 import { SOCKET_URL } from '../config';
+import { supabase } from './supabase';
 
 class SocketService {
     constructor() {
@@ -7,17 +8,23 @@ class SocketService {
         this.connected = false;
     }
 
-    connect() {
+    async connect() {
         if (this.socket?.connected) {
             console.log('Socket already connected');
             return;
         }
+
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
 
         this.socket = io(SOCKET_URL, {
             transports: ['websocket'],
             reconnection: true,
             reconnectionDelay: 1000,
             reconnectionAttempts: 5,
+            auth: {
+                token: token || null,
+            },
         });
 
         this.socket.on('connect', () => {
@@ -33,6 +40,11 @@ class SocketService {
         this.socket.on('connect_error', (error) => {
             console.error('Connection error:', error);
         });
+    }
+
+    async reconnect() {
+        this.disconnect();
+        await this.connect();
     }
 
     disconnect() {

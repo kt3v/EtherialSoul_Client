@@ -16,6 +16,12 @@ export const API_CONFIG = {
     timeout: 10000,
 };
 
+// Supabase configuration
+export const SUPABASE_CONFIG = {
+    url: 'https://jzhzbgjgrrhelmdxvsqt.supabase.co',
+    anonKey: 'sb_publishable_HzdMfCI4EDV0TPiM0o-YEg_-x_lay_V',
+};
+
 // Theme colors
 export const COLORS = {
     background: '#0a0a0a',

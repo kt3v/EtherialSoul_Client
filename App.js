@@ -1,15 +1,28 @@
-import React from 'react';
-import { Text } from 'react-native';
+import React, { useState } from 'react';
+import { Text, View, TouchableOpacity, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import ChatScreen from './src/screens/ChatScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import { COLORS } from './src/config';
+import { AuthProvider, useAuth } from './src/contexts/AuthContext';
+import AuthModal from './src/components/AuthModal';
 
 const Tab = createBottomTabNavigator();
 
-export default function App() {
+function AppContent() {
+    const [authModalVisible, setAuthModalVisible] = useState(false);
+    const { user, signOut } = useAuth();
+
+    const handleAuthAction = () => {
+        if (user) {
+            signOut();
+        } else {
+            setAuthModalVisible(true);
+        }
+    };
+
     return (
         <>
             <StatusBar style="light" />
@@ -45,6 +58,7 @@ export default function App() {
                         name="Dashboard"
                         component={DashboardScreen}
                         options={{
+                            headerTitle: 'Дашборд',
                             tabBarLabel: ({ color }) => (
                                 <TabLabel label="Дашборд" color={color} />
                             ),
@@ -57,6 +71,7 @@ export default function App() {
                         name="Chat"
                         component={ChatScreen}
                         options={{
+                            headerTitle: 'Чат',
                             tabBarLabel: ({ color }) => (
                                 <TabLabel label="Чат" color={color} />
                             ),
@@ -67,7 +82,19 @@ export default function App() {
                     />
                 </Tab.Navigator>
             </NavigationContainer>
+            <AuthModal
+                visible={authModalVisible}
+                onClose={() => setAuthModalVisible(false)}
+            />
         </>
+    );
+}
+
+export default function App() {
+    return (
+        <AuthProvider>
+            <AppContent />
+        </AuthProvider>
     );
 }
 
@@ -86,3 +113,18 @@ function TabIcon({ emoji, color }) {
         </Text>
     );
 }
+
+const styles = StyleSheet.create({
+    loginButton: {
+        marginRight: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        backgroundColor: COLORS.primary,
+        borderRadius: 8,
+    },
+    loginButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+});
