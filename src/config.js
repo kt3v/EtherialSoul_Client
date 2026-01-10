@@ -1,5 +1,5 @@
 // Development mode flag
-let isDev = false;
+let isDev = true;
 
 // Auto-detect environment - force production if not on localhost
 const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
