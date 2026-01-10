@@ -19,6 +19,7 @@ export default function ChatScreen() {
     const [inputText, setInputText] = useState('');
     const [isConnected, setIsConnected] = useState(false);
     const [isSending, setIsSending] = useState(false);
+    const [isAIResponding, setIsAIResponding] = useState(false);
     const flatListRef = useRef(null);
     const userId = useRef('user_' + Math.random().toString(36).substr(2, 9)).current;
     const typingTimeoutRef = useRef(null);
@@ -39,6 +40,7 @@ export default function ChatScreen() {
         });
 
         socketService.onAIBlock((block) => {
+            setIsAIResponding(true);
             // Add AI block as a message
             const message = {
                 id: Date.now() + Math.random(),
@@ -48,6 +50,10 @@ export default function ChatScreen() {
                 group: block.group,
             };
             setMessages((prev) => [...prev, message]);
+        });
+
+        socketService.onAIComplete(() => {
+            setIsAIResponding(false);
         });
 
         socketService.onError((error) => {
@@ -68,6 +74,7 @@ export default function ChatScreen() {
             socketService.offMessageReceived();
             socketService.offAIMessage();
             socketService.offAIBlock();
+            socketService.offAIComplete();
             socketService.offError();
         };
     }, []);
@@ -121,6 +128,12 @@ export default function ChatScreen() {
         setInputText('');
     };
 
+    const handleEndChat = () => {
+        if (!isConnected || !isAIResponding) return;
+        socketService.stopAIResponse(userId);
+        setIsAIResponding(false);
+    };
+
     const renderMessage = ({ item }) => {
         const isUser = item.sender === 'user';
         const isSystem = item.sender === 'system';
@@ -152,8 +165,19 @@ export default function ChatScreen() {
         <LinearGradient colors={[COLORS.background, '#1a0a2e']} style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>AI Chat</Text>
-                <View style={[styles.statusDot, isConnected && styles.statusConnected]} />
+                <View style={styles.headerLeft}>
+                    <Text style={styles.headerTitle}>AI Chat</Text>
+                    <View style={[styles.statusDot, isConnected && styles.statusConnected]} />
+                </View>
+                {isAIResponding && (
+                    <TouchableOpacity
+                        style={styles.endChatButton}
+                        onPress={handleEndChat}
+                        disabled={!isConnected}
+                    >
+                        <Text style={styles.endChatButtonText}>End Chat</Text>
+                    </TouchableOpacity>
+                )}
             </View>
 
             {/* Messages List */}
@@ -221,6 +245,11 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingTop: 60,
         paddingBottom: 20,
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
     },
     headerTitle: {
         fontSize: 28,
@@ -332,5 +361,16 @@ const styles = StyleSheet.create({
         fontSize: 24,
         color: '#fff',
         fontWeight: 'bold',
+    },
+    endChatButton: {
+        backgroundColor: COLORS.error,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+    },
+    endChatButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
     },
 });

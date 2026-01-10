@@ -57,6 +57,14 @@ class SocketService {
         this.socket.emit('typing_status', { userId, isTyping });
     }
 
+    stopAIResponse(userId) {
+        if (!this.socket?.connected) {
+            console.error('Socket not connected');
+            return;
+        }
+        this.socket.emit('stop_ai_response', { userId });
+    }
+
     onMessageReceived(callback) {
         if (!this.socket) return;
         this.socket.on('message_received', callback);
@@ -70,6 +78,11 @@ class SocketService {
     onAIBlock(callback) {
         if (!this.socket) return;
         this.socket.on('ai_block', callback);
+    }
+
+    onAIComplete(callback) {
+        if (!this.socket) return;
+        this.socket.on('ai_complete', callback);
     }
 
     onError(callback) {
@@ -90,6 +103,11 @@ class SocketService {
     offAIBlock() {
         if (!this.socket) return;
         this.socket.off('ai_block');
+    }
+
+    offAIComplete() {
+        if (!this.socket) return;
+        this.socket.off('ai_complete');
     }
 
     offError() {
