@@ -5,7 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import ChatScreen from './src/screens/ChatScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
-import { COLORS } from './src/config';
+import { COLORS } from './src/theme';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import AuthModal from './src/components/AuthModal';
 

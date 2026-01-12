@@ -1,5 +1,5 @@
 import { io } from 'socket.io-client';
-import { SOCKET_URL } from '../config';
+import { SOCKET_URL } from '../constants';
 import { supabase } from './supabase';
 
 class SocketService {

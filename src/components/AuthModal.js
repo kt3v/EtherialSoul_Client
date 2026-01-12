@@ -9,7 +9,8 @@ import {
     ActivityIndicator,
     Alert,
 } from 'react-native';
-import { COLORS } from '../config';
+import { LinearGradient } from 'expo-linear-gradient';
+import { COLORS } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function AuthModal({ visible, onClose }) {

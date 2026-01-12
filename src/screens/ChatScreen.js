@@ -11,7 +11,7 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS } from '../config';
+import { COLORS } from '../theme';
 import socketService from '../services/socket';
 
 export default function ChatScreen() {

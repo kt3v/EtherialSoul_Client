@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS } from '../config';
+import { COLORS } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import AuthModal from '../components/AuthModal';
 
