@@ -74,26 +74,26 @@ class SocketService {
         }
     }
 
-    sendMessage(message, userId) {
+    sendMessage(message) {
         if (!this.socket?.connected) {
             console.error('Socket not connected');
             return;
         }
 
-        this.socket.emit('user_message', { message, userId });
+        this.socket.emit('user_message', { message });
     }
 
-    sendTypingStatus(userId, isTyping) {
+    sendTypingStatus(isTyping) {
         if (!this.socket?.connected) return;
-        this.socket.emit('typing_status', { userId, isTyping });
+        this.socket.emit('typing_status', { isTyping });
     }
 
-    stopAIResponse(userId) {
+    stopAIResponse() {
         if (!this.socket?.connected) {
             console.error('Socket not connected');
             return;
         }
-        this.socket.emit('stop_ai_response', { userId });
+        this.socket.emit('stop_ai_response', {});
     }
 
     onMessageReceived(callback) {

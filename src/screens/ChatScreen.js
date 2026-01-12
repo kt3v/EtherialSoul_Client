@@ -21,7 +21,6 @@ export default function ChatScreen() {
     const [isSending, setIsSending] = useState(false);
     const [isAIResponding, setIsAIResponding] = useState(false);
     const flatListRef = useRef(null);
-    const userId = useRef('user_' + Math.random().toString(36).substr(2, 9)).current;
     const typingTimeoutRef = useRef(null);
     const isTypingRef = useRef(false);
 
@@ -103,13 +102,13 @@ export default function ChatScreen() {
         // If text is not empty and user wasn't typing before, send typing start
         if (text.length > 0 && !isTypingRef.current) {
             isTypingRef.current = true;
-            socketService.sendTypingStatus(userId, true);
+            socketService.sendTypingStatus(true);
         }
 
         // If text is empty, send typing stop immediately
         if (text.length === 0 && isTypingRef.current) {
             isTypingRef.current = false;
-            socketService.sendTypingStatus(userId, false);
+            socketService.sendTypingStatus(false);
             return;
         }
 
@@ -118,7 +117,7 @@ export default function ChatScreen() {
             typingTimeoutRef.current = setTimeout(() => {
                 if (isTypingRef.current) {
                     isTypingRef.current = false;
-                    socketService.sendTypingStatus(userId, false);
+                    socketService.sendTypingStatus(false);
                 }
             }, 1000); // 1 second of inactivity = stopped typing
         }
@@ -133,17 +132,17 @@ export default function ChatScreen() {
         }
         if (isTypingRef.current) {
             isTypingRef.current = false;
-            socketService.sendTypingStatus(userId, false);
+            socketService.sendTypingStatus(false);
         }
 
         setIsSending(true);
-        socketService.sendMessage(inputText.trim(), userId);
+        socketService.sendMessage(inputText.trim());
         setInputText('');
     };
 
     const handleEndChat = () => {
         if (!isConnected || !isAIResponding) return;
-        socketService.stopAIResponse(userId);
+        socketService.stopAIResponse();
         setIsAIResponding(false);
     };
 
