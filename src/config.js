@@ -1,14 +1,24 @@
 // Development mode flag (only used when running on localhost)
 // Set to true to connect to local server, false to connect to production server
-let isDev = false; // Changed default to false for safety
+let isDev = true; // Changed default to false for safety
 
-// Auto-detect environment - check if running on localhost
-const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+// Auto-detect environment - check if running in web browser
+const isWebBrowser = typeof window !== 'undefined' && window.location;
+const isLocalhost = isWebBrowser && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
 // Determine server URL based on environment
 // If NOT on localhost (i.e., on hosting), ALWAYS use production server
 // If on localhost, respect the isDev flag
 const useLocalServer = isLocalhost && isDev;
+
+// Debug logging
+console.log('Environment debug:', {
+    isWebBrowser,
+    isLocalhost,
+    isDev,
+    useLocalServer,
+    hostname: isWebBrowser ? window.location.hostname : 'N/A'
+});
 
 // Backend WebSocket server URL
 export const SOCKET_URL = useLocalServer ? 'http://localhost:3000' : 'https://etherial-vqt7t.ondigitalocean.app';

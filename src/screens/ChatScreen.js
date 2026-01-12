@@ -26,12 +26,15 @@ export default function ChatScreen() {
     const isTypingRef = useRef(false);
 
     useEffect(() => {
-        // Connect to WebSocket
-        socketService.connect();
-
-        // Set up event listeners
+        // Set up event listeners FIRST
         socketService.onMessageReceived((message) => {
-            setMessages((prev) => [...prev, message]);
+            console.log('📨 onMessageReceived callback:', message);
+            setMessages((prev) => {
+                console.log('📝 Previous messages:', prev);
+                const newMessages = [...prev, message];
+                console.log('📝 New messages:', newMessages);
+                return newMessages;
+            });
             setIsSending(false);
         });
 
@@ -40,6 +43,7 @@ export default function ChatScreen() {
         });
 
         socketService.onAIBlock((block) => {
+            console.log('🤖 onAIBlock callback:', block);
             setIsAIResponding(true);
             // Add AI block as a message
             const message = {
@@ -49,7 +53,13 @@ export default function ChatScreen() {
                 timestamp: block.timestamp,
                 group: block.group,
             };
-            setMessages((prev) => [...prev, message]);
+            console.log('🤖 Creating AI message:', message);
+            setMessages((prev) => {
+                console.log('🤖 Previous messages:', prev);
+                const newMessages = [...prev, message];
+                console.log('🤖 New messages:', newMessages);
+                return newMessages;
+            });
         });
 
         socketService.onAIComplete(() => {
@@ -60,6 +70,9 @@ export default function ChatScreen() {
             console.error('Socket error:', error);
             setIsSending(false);
         });
+
+        // Connect to WebSocket LAST
+        socketService.connect();
 
         // Check connection status
         const checkConnection = setInterval(() => {
