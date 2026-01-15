@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../theme';
 import socketService from '../services/socket';
 
-export default function ChatScreen() {
+export default function ChatScreen({ navigation }) {
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState('');
     const [isConnected, setIsConnected] = useState(false);
@@ -178,6 +178,12 @@ export default function ChatScreen() {
             {/* Header */}
             <View style={styles.header}>
                 <View style={styles.headerLeft}>
+                    <TouchableOpacity
+                        style={styles.backButton}
+                        onPress={() => navigation.navigate('Dashboard')}
+                    >
+                        <Text style={styles.backButtonText}>←</Text>
+                    </TouchableOpacity>
                     <Text style={styles.headerTitle}>AI Chat</Text>
                     <View style={[styles.statusDot, isConnected && styles.statusConnected]} />
                 </View>
@@ -262,6 +268,22 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
+    },
+    backButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: COLORS.surface,
+        borderColor: COLORS.border,
+        borderWidth: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    backButtonText: {
+        fontSize: 20,
+        color: COLORS.text,
+        fontWeight: '800',
+        lineHeight: 22,
     },
     headerTitle: {
         fontSize: 28,

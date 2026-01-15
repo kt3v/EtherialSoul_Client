@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,6 +10,84 @@ export default function DashboardScreen({ navigation }) {
     const [authModalVisible, setAuthModalVisible] = useState(false);
     const [userDataModalVisible, setUserDataModalVisible] = useState(false);
     const { user, signOut } = useAuth();
+
+    const categories = useMemo(
+        () => [
+            {
+                key: 'vitality',
+                title: '⚡ Витальность',
+                items: [
+                    'Почему я чувствую упадок сил, несмотря на планы?',
+                    'Какое время сегодня лучшее для интенсивной тренировки?',
+                    'Стоит ли мне сегодня браться за новый сложный проект?',
+                    'Как мне экологично поднять уровень энергии прямо сейчас?',
+                    'Будет ли завтра больше сил для активных действий?',
+                ],
+            },
+            {
+                key: 'focus',
+                title: '🧠 Когнитивный фокус',
+                items: [
+                    'Подходящее ли сейчас время для глубокого обучения или экзамена?',
+                    'Почему мне так сложно сосредоточиться на деталях в данный момент?',
+                    'Стоит ли подписывать важный контракт или лучше подождать?',
+                    'В какие часы мой мозг будет работать на пике продуктивности?',
+                    'Как мне лучше структурировать задачи на сегодня, исходя из фокуса?',
+                ],
+            },
+            {
+                key: 'luck',
+                title: '🍀 Везение',
+                items: [
+                    'В какой сфере мне сегодня может улыбнуться удача?',
+                    'Благоприятен ли день для запуска рискованного эксперимента?',
+                    'Ожидаются ли сегодня неожиданные приятные предложения?',
+                    'Как мне не упустить возможность, которую дает текущий фон?',
+                    'Стоит ли сегодня полагаться на случай или лучше все просчитать?',
+                ],
+            },
+            {
+                key: 'friction',
+                title: '⛓️ Трение',
+                items: [
+                    'Почему сегодня всё идет с задержками и сопротивлением?',
+                    'Как мне снизить уровень стресса от внешних препятствий?',
+                    'Стоит ли вступать в дискуссии или лучше переждать пик трения?',
+                    'В чем причина сегодняшних бюрократических или технических сложностей?',
+                    'Какая стратегия поможет мне пройти через этот день с минимальными потерями?',
+                ],
+            },
+            {
+                key: 'magnetism',
+                title: '💖 Магнетизм',
+                items: [
+                    'Насколько я сегодня привлекателен для окружающих?',
+                    'Подходящий ли это вечер для первого свидания или знакомства?',
+                    'Как мне усилить свое влияние на партнеров в переговорах сегодня?',
+                    'Будет ли общение с близкими сегодня гармоничным или напряженным?',
+                    'Как мне использовать свое обаяние для решения рабочих вопросов?',
+                ],
+            },
+            {
+                key: 'intuition',
+                title: '👁️ Интуиция',
+                items: [
+                    'Стоит ли мне доверять своему предчувствию в текущем вопросе?',
+                    'Что может означать мой сегодняшний яркий сон в контексте дня?',
+                    'Как мне лучше настроиться на свой внутренний голос сегодня?',
+                    'Почему я чувствую необъяснимую тревогу, есть ли для нее повод?',
+                    'Подходит ли время для медитации и поиска ответов внутри себя?',
+                ],
+            },
+        ],
+        []
+    );
+
+    const [selectedCategoryKey, setSelectedCategoryKey] = useState(categories[0]?.key);
+    const selectedCategory = useMemo(
+        () => categories.find(c => c.key === selectedCategoryKey) ?? categories[0],
+        [categories, selectedCategoryKey]
+    );
 
     const handleAuthAction = () => {
         if (user) {
@@ -22,6 +100,12 @@ export default function DashboardScreen({ navigation }) {
     return (
         <LinearGradient colors={[COLORS.background, '#0a1a2e']} style={styles.container}>
             <View style={styles.header}>
+                <TouchableOpacity
+                    style={styles.chatButton}
+                    onPress={() => navigation.navigate('Chat')}
+                >
+                    <Text style={styles.chatButtonText}>Tarot reader chat</Text>
+                </TouchableOpacity>
                 {user ? (
                     <TouchableOpacity
                         style={styles.userButton}
@@ -39,49 +123,41 @@ export default function DashboardScreen({ navigation }) {
                     </Text>
                 </TouchableOpacity>
             </View>
-            <View style={styles.content}>
-                <View style={styles.iconContainer}>
-                    <LinearGradient
-                        colors={[COLORS.primary, COLORS.secondary]}
-                        style={styles.iconGradient}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                    >
-                        <Text style={styles.iconText}>📊</Text>
-                    </LinearGradient>
+            <ScrollView contentContainerStyle={styles.content}>
+                <View style={styles.categoriesContainer}>
+                    {categories.map(category => {
+                        const isActive = category.key === selectedCategoryKey;
+                        return (
+                            <TouchableOpacity
+                                key={category.key}
+                                style={[styles.categoryChip, isActive && styles.categoryChipActive]}
+                                onPress={() => setSelectedCategoryKey(category.key)}
+                            >
+                                <Text
+                                    style={[
+                                        styles.categoryChipText,
+                                        isActive && styles.categoryChipTextActive,
+                                    ]}
+                                >
+                                    {category.title}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
                 </View>
 
-                <Text style={styles.title}>Dashboard</Text>
-                <Text style={styles.subtitle}>
-                    Здесь будет отображаться информация,{'\n'}
-                    визуализация и графика
-                </Text>
-
-                <View style={styles.statsContainer}>
-                    <View style={styles.statCard}>
-                        <Text style={styles.statValue}>0</Text>
-                        <Text style={styles.statLabel}>Сообщений</Text>
-                    </View>
-                    <View style={styles.statCard}>
-                        <Text style={styles.statValue}>0</Text>
-                        <Text style={styles.statLabel}>Диалогов</Text>
-                    </View>
+                <View style={styles.itemsContainer}>
+                    {(selectedCategory?.items ?? []).map(item => (
+                        <TouchableOpacity
+                            key={item}
+                            style={styles.itemButton}
+                            onPress={() => {}}
+                        >
+                            <Text style={styles.itemButtonText}>{item}</Text>
+                        </TouchableOpacity>
+                    ))}
                 </View>
-
-                <TouchableOpacity
-                    style={styles.button}
-                    onPress={() => navigation.navigate('Chat')}
-                >
-                    <LinearGradient
-                        colors={[COLORS.primary, COLORS.primaryDark]}
-                        style={styles.buttonGradient}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                    >
-                        <Text style={styles.buttonText}>Перейти в чат</Text>
-                    </LinearGradient>
-                </TouchableOpacity>
-            </View>
+            </ScrollView>
             <AuthModal
                 visible={authModalVisible}
                 onClose={() => setAuthModalVisible(false)}
@@ -104,6 +180,20 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingTop: 60,
         paddingBottom: 20,
+    },
+    chatButton: {
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        backgroundColor: COLORS.surface,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        marginRight: 'auto',
+    },
+    chatButtonText: {
+        color: COLORS.text,
+        fontSize: 14,
+        fontWeight: '600',
     },
     userButton: {
         paddingHorizontal: 16,
@@ -129,74 +219,50 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     content: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 32,
+        paddingHorizontal: 20,
+        paddingBottom: 32,
     },
-    iconContainer: {
-        marginBottom: 32,
-    },
-    iconGradient: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    iconText: {
-        fontSize: 60,
-    },
-    title: {
-        fontSize: 36,
-        fontWeight: 'bold',
-        color: COLORS.text,
-        marginBottom: 12,
-    },
-    subtitle: {
-        fontSize: 16,
-        color: COLORS.textSecondary,
-        textAlign: 'center',
-        lineHeight: 24,
-        marginBottom: 48,
-    },
-    statsContainer: {
+    categoriesContainer: {
         flexDirection: 'row',
-        gap: 16,
-        marginBottom: 48,
+        flexWrap: 'wrap',
+        gap: 10,
+        marginBottom: 16,
     },
-    statCard: {
+    categoryChip: {
         backgroundColor: COLORS.surface,
-        borderRadius: 16,
-        padding: 24,
-        minWidth: 120,
-        alignItems: 'center',
-        borderWidth: 1,
         borderColor: COLORS.border,
+        borderWidth: 1,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 999,
     },
-    statValue: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        color: COLORS.primary,
-        marginBottom: 8,
+    categoryChipActive: {
+        backgroundColor: COLORS.primary,
+        borderColor: COLORS.primary,
     },
-    statLabel: {
+    categoryChipText: {
+        color: COLORS.text,
         fontSize: 14,
-        color: COLORS.textSecondary,
-    },
-    button: {
-        width: '100%',
-        maxWidth: 300,
-    },
-    buttonGradient: {
-        paddingVertical: 16,
-        paddingHorizontal: 32,
-        borderRadius: 28,
-        alignItems: 'center',
-    },
-    buttonText: {
-        fontSize: 18,
         fontWeight: '600',
+    },
+    categoryChipTextActive: {
         color: '#fff',
+    },
+    itemsContainer: {
+        gap: 10,
+    },
+    itemButton: {
+        backgroundColor: COLORS.surface,
+        borderColor: COLORS.border,
+        borderWidth: 1,
+        paddingHorizontal: 14,
+        paddingVertical: 14,
+        borderRadius: 14,
+    },
+    itemButtonText: {
+        color: COLORS.text,
+        fontSize: 15,
+        lineHeight: 20,
+        fontWeight: '500',
     },
 });

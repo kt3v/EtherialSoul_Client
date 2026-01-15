@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Text, View, TouchableOpacity, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { DarkTheme, NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import ChatScreen from './src/screens/ChatScreen';
@@ -28,8 +28,9 @@ function AppContent() {
             <StatusBar style="light" />
             <NavigationContainer
                 theme={{
-                    dark: true,
+                    ...DarkTheme,
                     colors: {
+                        ...DarkTheme.colors,
                         primary: COLORS.primary,
                         background: COLORS.background,
                         card: COLORS.surface,
@@ -72,12 +73,8 @@ function AppContent() {
                         component={ChatScreen}
                         options={{
                             headerTitle: 'Чат',
-                            tabBarLabel: ({ color }) => (
-                                <TabLabel label="Чат" color={color} />
-                            ),
-                            tabBarIcon: ({ color }) => (
-                                <TabIcon emoji="💬" color={color} />
-                            ),
+                            tabBarButton: () => null,
+                            tabBarStyle: { display: 'none' },
                         }}
                     />
                 </Tab.Navigator>
