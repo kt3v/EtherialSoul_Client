@@ -9,7 +9,7 @@ import UserDataModal from '../components/UserDataModal';
 export default function DashboardScreen({ navigation }) {
     const [authModalVisible, setAuthModalVisible] = useState(false);
     const [userDataModalVisible, setUserDataModalVisible] = useState(false);
-    const { user, signOut, hasProfileData, checkingProfile, checkProfileData } = useAuth();
+    const { user, signOut, hasProfileData, checkingProfile, checkProfileData, loading, profileReady } = useAuth();
     const [isOnboarding, setIsOnboarding] = useState(false);
 
     const categories = useMemo(
@@ -91,6 +91,14 @@ export default function DashboardScreen({ navigation }) {
     );
 
     useEffect(() => {
+        if (loading) {
+            return;
+        }
+
+        if (!profileReady) {
+            return;
+        }
+
         if (user && !checkingProfile) {
             if (!hasProfileData) {
                 setIsOnboarding(true);
@@ -99,7 +107,18 @@ export default function DashboardScreen({ navigation }) {
                 setIsOnboarding(false);
             }
         }
-    }, [user, hasProfileData, checkingProfile]);
+    }, [user, hasProfileData, checkingProfile, loading, profileReady]);
+
+    useEffect(() => {
+        if (loading) return;
+        if (!profileReady) return;
+        if (!user) return;
+
+        if (hasProfileData && isOnboarding) {
+            setIsOnboarding(false);
+            setUserDataModalVisible(false);
+        }
+    }, [loading, profileReady, user, hasProfileData, isOnboarding]);
 
     const handleAuthAction = () => {
         if (user) {
@@ -115,13 +134,12 @@ export default function DashboardScreen({ navigation }) {
         setUserDataModalVisible(false);
     };
 
-    // Show loading while checking profile
-    if (user && checkingProfile) {
+    if (loading) {
         return (
             <LinearGradient colors={[COLORS.background, '#0a1a2e']} style={styles.container}>
                 <View style={styles.centeredLoginContainer}>
                     <ActivityIndicator size="large" color={COLORS.primary} />
-                    <Text style={styles.loadingText}>Загрузка профиля...</Text>
+                    <Text style={styles.loadingText}>Загрузка...</Text>
                 </View>
             </LinearGradient>
         );

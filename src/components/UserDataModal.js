@@ -19,7 +19,7 @@ import { calculateCelestialBodies } from '../services/astrologyService';
 import astrologyDataManager from '../services/astrologyDataManager';
 
 export default function UserDataModal({ visible, onClose, isOnboarding = false, onComplete }) {
-    const { user, saveUserBirthData, getUserBirthData } = useAuth();
+    const { user, saveUserBirthData, getUserBirthData, userProfile } = useAuth();
     const [step, setStep] = useState('form');
     const [fullName, setFullName] = useState('');
     const [birthPlace, setBirthPlace] = useState('');
@@ -34,7 +34,6 @@ export default function UserDataModal({ visible, onClose, isOnboarding = false, 
     const [showTimePicker, setShowTimePicker] = useState(false);
     const [dateValue, setDateValue] = useState(new Date());
     const [timeValue, setTimeValue] = useState(new Date());
-    const [loadingExistingData, setLoadingExistingData] = useState(false);
     const suppressNextFetch = useRef(false);
     const isSelectingSuggestion = useRef(false);
 
@@ -43,6 +42,49 @@ export default function UserDataModal({ visible, onClose, isOnboarding = false, 
             loadExistingData();
         }
     }, [visible, user]);
+
+    useEffect(() => {
+        if (!visible) return;
+        if (!user) return;
+        if (!userProfile) return;
+
+        const data = userProfile;
+        setFullName(data.full_name || '');
+        setBirthPlace(data.birth_place || '');
+        setSelectedLocation(data.birth_latitude && data.birth_longitude ? {
+            lat: data.birth_latitude,
+            lon: data.birth_longitude,
+            name: data.birth_place,
+        } : null);
+
+        if (data.birth_date_time) {
+            const dt = DateTime.fromISO(data.birth_date_time);
+            setBirthDate(dt.toFormat('yyyy-MM-dd'));
+            setBirthTime(dt.toFormat('HH:mm'));
+            setDateValue(dt.toJSDate());
+            setTimeValue(dt.toJSDate());
+
+            if (data.astrology_data) {
+                astrologyDataManager.setNatalChart(data.astrology_data);
+            }
+
+            const resultsData = {
+                fullName: data.full_name,
+                birthPlace: data.birth_place,
+                coordinates: {
+                    latitude: data.birth_latitude,
+                    longitude: data.birth_longitude,
+                },
+                timezone: data.timezone,
+                birthDateTime: data.birth_date_time,
+                utcOffset: data.utc_offset,
+                localTime: dt.toFormat('yyyy-MM-dd HH:mm:ss'),
+                astrologyData: data.astrology_data,
+            };
+            setResults(resultsData);
+            setStep('results');
+        }
+    }, [visible, user, userProfile]);
 
     useEffect(() => {
         if (suppressNextFetch.current) {
@@ -60,7 +102,10 @@ export default function UserDataModal({ visible, onClose, isOnboarding = false, 
     }, [birthPlace]);
 
     const loadExistingData = async () => {
-        setLoadingExistingData(true);
+        if (userProfile && userProfile.user_id === user?.id) {
+            return;
+        }
+
         try {
             const data = await getUserBirthData();
             if (data) {
@@ -104,8 +149,6 @@ export default function UserDataModal({ visible, onClose, isOnboarding = false, 
             }
         } catch (error) {
             console.error('[userdata] error loading existing data:', error);
-        } finally {
-            setLoadingExistingData(false);
         }
     };
 

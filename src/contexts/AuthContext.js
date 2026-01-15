@@ -11,15 +11,24 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [hasProfileData, setHasProfileData] = useState(false);
     const [checkingProfile, setCheckingProfile] = useState(false);
+    const [userProfile, setUserProfile] = useState(null);
+    const [userProfileLoading, setUserProfileLoading] = useState(false);
+    const [userProfileLoadedAt, setUserProfileLoadedAt] = useState(null);
+    const [profileReady, setProfileReady] = useState(false);
 
     useEffect(() => {
         supabase.auth.getSession().then(async ({ data: { session } }) => {
             setSession(session);
             setUser(session?.user ?? null);
+            setProfileReady(false);
             
             if (session?.user) {
+                await loadUserProfile({ userId: session.user.id });
                 await checkProfileData(session.user.id);
                 await loadAndGenerateTransitChart(session.user.id);
+                setProfileReady(true);
+            } else {
+                setProfileReady(true);
             }
             
             setLoading(false);
@@ -30,12 +39,18 @@ export const AuthProvider = ({ children }) => {
         } = supabase.auth.onAuthStateChange(async (_event, session) => {
             setSession(session);
             setUser(session?.user ?? null);
+            setProfileReady(false);
             
             if (session?.user) {
+                await loadUserProfile({ userId: session.user.id });
                 await checkProfileData(session.user.id);
                 await loadAndGenerateTransitChart(session.user.id);
+                setProfileReady(true);
             } else {
                 setHasProfileData(false);
+                setUserProfile(null);
+                setUserProfileLoadedAt(null);
+                setProfileReady(true);
                 astrologyDataManager.clear();
             }
             
@@ -72,59 +87,85 @@ export const AuthProvider = ({ children }) => {
         if (error) throw error;
     };
 
+    const loadUserProfile = async ({ userId, force = false } = {}) => {
+        const targetUserId = userId ?? user?.id;
+        if (!targetUserId) return null;
+
+        if (!force && userProfile && userProfile.user_id === targetUserId) {
+            return userProfile;
+        }
+
+        setUserProfileLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('user_profiles')
+                .select('*')
+                .eq('user_id', targetUserId)
+                .single();
+
+            if (error && error.code !== 'PGRST116') {
+                throw error;
+            }
+
+            setUserProfile(data ?? null);
+            setUserProfileLoadedAt(new Date().toISOString());
+            return data ?? null;
+        } finally {
+            setUserProfileLoading(false);
+        }
+    };
+
     const saveUserBirthData = async (birthData) => {
         if (!user) throw new Error('User not authenticated');
         
+        const upsertPayload = {
+            user_id: user.id,
+            full_name: birthData.fullName,
+            birth_place: birthData.birthPlace,
+            birth_latitude: birthData.coordinates.latitude,
+            birth_longitude: birthData.coordinates.longitude,
+            timezone: birthData.timezone,
+            birth_date_time: birthData.birthDateTime,
+            utc_offset: birthData.utcOffset,
+            astrology_data: birthData.astrologyData || null,
+            updated_at: new Date().toISOString(),
+        };
+
         const { data, error } = await supabase
             .from('user_profiles')
-            .upsert({
-                user_id: user.id,
-                full_name: birthData.fullName,
-                birth_place: birthData.birthPlace,
-                birth_latitude: birthData.coordinates.latitude,
-                birth_longitude: birthData.coordinates.longitude,
-                timezone: birthData.timezone,
-                birth_date_time: birthData.birthDateTime,
-                utc_offset: birthData.utcOffset,
-                astrology_data: birthData.astrologyData || null,
-                updated_at: new Date().toISOString(),
-            }, {
+            .upsert(upsertPayload, {
                 onConflict: 'user_id'
             });
         
         if (error) throw error;
+
+        setUserProfile((prev) => {
+            if (prev && prev.user_id === user.id) {
+                return { ...prev, ...upsertPayload };
+            }
+            return { ...upsertPayload };
+        });
+        setUserProfileLoadedAt(new Date().toISOString());
+
         return data;
     };
 
     const getUserBirthData = async () => {
         if (!user) return null;
-        
-        const { data, error } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('user_id', user.id)
-            .single();
-        
-        if (error && error.code !== 'PGRST116') {
-            throw error;
+
+        if (userProfile && userProfile.user_id === user.id) {
+            return userProfile;
         }
-        
-        return data;
+
+        return loadUserProfile({ userId: user.id });
     };
 
     const loadAndGenerateTransitChart = async (userId) => {
         try {
-            const { data, error } = await supabase
-                .from('user_profiles')
-                .select('*')
-                .eq('user_id', userId)
-                .single();
-            
-            if (error && error.code !== 'PGRST116') {
-                console.error('[AuthContext] Error loading user profile for transit:', error);
-                return;
-            }
-            
+            const data = (userProfile && userProfile.user_id === userId)
+                ? userProfile
+                : await loadUserProfile({ userId });
+
             if (data && data.birth_latitude && data.birth_longitude && data.astrology_data) {
                 console.log('[AuthContext] Loading natal chart from database');
                 astrologyDataManager.setNatalChart(data.astrology_data);
@@ -145,19 +186,11 @@ export const AuthProvider = ({ children }) => {
     const checkProfileData = async (userId) => {
         setCheckingProfile(true);
         try {
-            const { data, error } = await supabase
-                .from('user_profiles')
-                .select('full_name, birth_date_time')
-                .eq('user_id', userId)
-                .single();
-            
-            if (error && error.code !== 'PGRST116') {
-                console.error('Error checking profile data:', error);
-                setHasProfileData(false);
-                return false;
-            }
-            
-            const hasData = !!(data?.full_name && data?.birth_date_time);
+            const profile = (userProfile && userProfile.user_id === userId)
+                ? userProfile
+                : await loadUserProfile({ userId });
+
+            const hasData = !!(profile?.full_name && profile?.birth_date_time);
             setHasProfileData(hasData);
             return hasData;
         } catch (error) {
@@ -166,6 +199,7 @@ export const AuthProvider = ({ children }) => {
             return false;
         } finally {
             setCheckingProfile(false);
+            setProfileReady(true);
         }
     };
 
@@ -175,11 +209,16 @@ export const AuthProvider = ({ children }) => {
         loading,
         hasProfileData,
         checkingProfile,
+        userProfile,
+        userProfileLoading,
+        userProfileLoadedAt,
+        profileReady,
         signUp,
         signIn,
         signOut,
         saveUserBirthData,
         getUserBirthData,
+        loadUserProfile,
         checkProfileData,
         loadAndGenerateTransitChart,
     };
