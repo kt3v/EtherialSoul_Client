@@ -166,12 +166,6 @@ export default function DashboardScreen({ navigation }) {
         <LinearGradient colors={[COLORS.background, '#0a1a2e']} style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity
-                    style={styles.chatButton}
-                    onPress={() => navigation.navigate('Chat', { chatMode: 'tarot' })}
-                >
-                    <Text style={styles.chatButtonText}>Tarot reader chat</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
                     style={styles.userButton}
                     onPress={() => setUserDataModalVisible(true)}
                 >
@@ -269,22 +263,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingTop: 60,
         paddingBottom: 20,
-    },
-    chatButton: {
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        backgroundColor: COLORS.surface,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        marginRight: 'auto',
-    },
-    chatButtonText: {
-        color: COLORS.text,
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    userButton: {
+    },    userButton: {
         paddingHorizontal: 16,
         paddingVertical: 8,
         backgroundColor: COLORS.secondary,
