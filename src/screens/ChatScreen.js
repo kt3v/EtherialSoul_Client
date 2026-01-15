@@ -9,6 +9,7 @@ import {
     KeyboardAvoidingView,
     Platform,
     ActivityIndicator,
+    Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../theme';
@@ -20,14 +21,57 @@ export default function ChatScreen({ navigation, route }) {
     const [isConnected, setIsConnected] = useState(false);
     const [isSending, setIsSending] = useState(false);
     const [isAIResponding, setIsAIResponding] = useState(false);
+    const [isAITyping, setIsAITyping] = useState(false);
     const flatListRef = useRef(null);
     const typingTimeoutRef = useRef(null);
+    const aiTypingTimeoutRef = useRef(null);
+    const aiTypingDesiredRef = useRef(false);
     const isTypingRef = useRef(false);
     const chatModeSetRef = useRef(false);
+
+    const dot1 = useRef(new Animated.Value(0.3)).current;
+    const dot2 = useRef(new Animated.Value(0.3)).current;
+    const dot3 = useRef(new Animated.Value(0.3)).current;
     
     const { chatMode = 'astro', initialMessage, questionType } = route.params || {};
 
     useEffect(() => {
+        const scheduleTypingIndicator = () => {
+            if (!aiTypingDesiredRef.current) return;
+            if (aiTypingTimeoutRef.current) return;
+
+            const delayMs = 1000 + Math.floor(Math.random() * 2000);
+            aiTypingTimeoutRef.current = setTimeout(() => {
+                aiTypingTimeoutRef.current = null;
+                if (!aiTypingDesiredRef.current) return;
+                setIsAITyping(true);
+            }, delayMs);
+        };
+
+        const cancelTypingIndicator = () => {
+            if (aiTypingTimeoutRef.current) {
+                clearTimeout(aiTypingTimeoutRef.current);
+                aiTypingTimeoutRef.current = null;
+            }
+        };
+
+        const makeDotAnim = (dot, delay) =>
+            Animated.loop(
+                Animated.sequence([
+                    Animated.delay(delay),
+                    Animated.timing(dot, { toValue: 1, duration: 250, useNativeDriver: true }),
+                    Animated.timing(dot, { toValue: 0.3, duration: 250, useNativeDriver: true }),
+                    Animated.delay(250),
+                ])
+            );
+
+        const a1 = makeDotAnim(dot1, 0);
+        const a2 = makeDotAnim(dot2, 120);
+        const a3 = makeDotAnim(dot3, 240);
+        a1.start();
+        a2.start();
+        a3.start();
+
         // Set up event listeners FIRST
         socketService.onMessageReceived((message) => {
             console.log('📨 onMessageReceived callback:', message);
@@ -47,6 +91,13 @@ export default function ChatScreen({ navigation, route }) {
         socketService.onAIBlock((block) => {
             console.log('🤖 onAIBlock callback:', block);
             setIsAIResponding(true);
+
+            // Between blocks we want a “natural” typing feel:
+            // every time a block arrives, hide the typing indicator and restart delay if AI still should be typing.
+            cancelTypingIndicator();
+            setIsAITyping(false);
+            scheduleTypingIndicator();
+
             // Add AI block as a message
             const message = {
                 id: Date.now() + Math.random(),
@@ -66,6 +117,24 @@ export default function ChatScreen({ navigation, route }) {
 
         socketService.onAIComplete(() => {
             setIsAIResponding(false);
+            aiTypingDesiredRef.current = false;
+            cancelTypingIndicator();
+            setIsAITyping(false);
+        });
+
+        socketService.onAITyping((payload) => {
+            const shouldShow = !!payload?.isTyping;
+
+            aiTypingDesiredRef.current = shouldShow;
+
+            if (!shouldShow) {
+                cancelTypingIndicator();
+                setIsAITyping(false);
+                return;
+            }
+
+            // show only after smoothing delay
+            scheduleTypingIndicator();
         });
 
         socketService.onError((error) => {
@@ -94,11 +163,17 @@ export default function ChatScreen({ navigation, route }) {
             if (typingTimeoutRef.current) {
                 clearTimeout(typingTimeoutRef.current);
             }
+            aiTypingDesiredRef.current = false;
+            cancelTypingIndicator();
+            a1.stop();
+            a2.stop();
+            a3.stop();
             socketService.offMessageReceived();
             socketService.offAIMessage();
             socketService.offAIBlock();
             socketService.offAIComplete();
             socketService.offError();
+            socketService.offAITyping();
         };
     }, []);
 
@@ -197,6 +272,22 @@ export default function ChatScreen({ navigation, route }) {
         );
     };
 
+    const renderTypingIndicator = () => {
+        if (!isAITyping) return null;
+
+        return (
+            <View style={styles.messageContainer}>
+                <View style={[styles.messageBubble, styles.aiBubble, styles.typingBubble]}>
+                    <View style={styles.typingDots}>
+                        <Animated.View style={[styles.typingDot, { opacity: dot1 }]} />
+                        <Animated.View style={[styles.typingDot, { opacity: dot2 }]} />
+                        <Animated.View style={[styles.typingDot, { opacity: dot3 }]} />
+                    </View>
+                </View>
+            </View>
+        );
+    };
+
     return (
         <LinearGradient colors={[COLORS.background, '#1a0a2e']} style={styles.container}>
             {/* Header */}
@@ -221,6 +312,7 @@ export default function ChatScreen({ navigation, route }) {
                 keyExtractor={(item) => item.id.toString()}
                 contentContainerStyle={styles.messagesList}
                 onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
+                ListFooterComponent={renderTypingIndicator}
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
                         <Text style={styles.emptyText}>Начните разговор с AI</Text>
@@ -343,6 +435,22 @@ const styles = StyleSheet.create({
         borderBottomLeftRadius: 4,
         borderWidth: 1,
         borderColor: COLORS.border,
+    },
+    typingBubble: {
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        width: 64,
+    },
+    typingDots: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    typingDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: COLORS.textSecondary,
     },
     systemBubble: {
         backgroundColor: COLORS.surfaceLight,

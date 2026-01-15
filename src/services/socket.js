@@ -203,6 +203,14 @@ class SocketService {
         this.socket.on('error', callback);
     }
 
+    onAITyping(callback) {
+        if (this.socket) {
+            this.socket.on('ai_typing', callback);
+        } else {
+            this.eventListeners.set('ai_typing', callback);
+        }
+    }
+
     offMessageReceived() {
         if (!this.socket) return;
         this.socket.off('message_received');
@@ -226,6 +234,11 @@ class SocketService {
     offError() {
         if (!this.socket) return;
         this.socket.off('error');
+    }
+
+    offAITyping() {
+        if (!this.socket) return;
+        this.socket.off('ai_typing');
     }
 }
 
