@@ -22,12 +22,14 @@ export default function DashboardScreen({ navigation }) {
     return (
         <LinearGradient colors={[COLORS.background, '#0a1a2e']} style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity
-                    style={styles.userButton}
-                    onPress={() => setUserDataModalVisible(true)}
-                >
-                    <Text style={styles.userButtonText}>User</Text>
-                </TouchableOpacity>
+                {user ? (
+                    <TouchableOpacity
+                        style={styles.userButton}
+                        onPress={() => setUserDataModalVisible(true)}
+                    >
+                        <Text style={styles.userButtonText}>User</Text>
+                    </TouchableOpacity>
+                ) : null}
                 <TouchableOpacity
                     style={styles.loginButton}
                     onPress={handleAuthAction}
