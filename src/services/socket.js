@@ -1,6 +1,7 @@
 import { io } from 'socket.io-client';
 import { SOCKET_URL } from '../constants';
 import { supabase } from './supabase';
+import astrologyDataManager from './astrologyDataManager';
 
 class SocketService {
     constructor() {
@@ -74,7 +75,7 @@ class SocketService {
         }
     }
 
-    sendMessage(message, chatMode = null) {
+    sendMessage(message, chatMode = null, questionType = null) {
         if (!this.socket?.connected) {
             console.error('Socket not connected');
             return;
@@ -84,10 +85,27 @@ class SocketService {
         if (chatMode) {
             data.chatMode = chatMode;
         }
+        if (questionType) {
+            data.questionType = questionType;
+        }
+        
+        // Send both natal and transit chart data
+        const natalChart = astrologyDataManager.getNatalChart();
+        const transitChart = astrologyDataManager.getTransitChart();
+        
+        if (natalChart) {
+            data.natalChart = natalChart;
+            console.log('[Socket] Sending natal chart data');
+        }
+        if (transitChart) {
+            data.transitChart = transitChart;
+            console.log('[Socket] Sending transit chart data');
+        }
+        
         this.socket.emit('user_message', data);
     }
 
-    setChatMode(mode, initialMessage = null) {
+    setChatMode(mode, initialMessage = null, questionType = null) {
         if (!this.socket?.connected) {
             console.error('Socket not connected');
             return;
@@ -97,6 +115,23 @@ class SocketService {
         if (initialMessage) {
             data.initialMessage = initialMessage;
         }
+        if (questionType) {
+            data.questionType = questionType;
+        }
+        
+        // Send both natal and transit chart data
+        const natalChart = astrologyDataManager.getNatalChart();
+        const transitChart = astrologyDataManager.getTransitChart();
+        
+        if (natalChart) {
+            data.natalChart = natalChart;
+            console.log('[Socket] Sending natal chart data with chat mode');
+        }
+        if (transitChart) {
+            data.transitChart = transitChart;
+            console.log('[Socket] Sending transit chart data with chat mode');
+        }
+        
         this.socket.emit('set_chat_mode', data);
     }
 

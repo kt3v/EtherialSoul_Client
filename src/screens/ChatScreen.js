@@ -25,7 +25,7 @@ export default function ChatScreen({ navigation, route }) {
     const isTypingRef = useRef(false);
     const chatModeSetRef = useRef(false);
     
-    const { chatMode = 'astro', initialMessage } = route.params || {};
+    const { chatMode = 'astro', initialMessage, questionType } = route.params || {};
 
     useEffect(() => {
         // Set up event listeners FIRST
@@ -84,8 +84,8 @@ export default function ChatScreen({ navigation, route }) {
             // Send chat mode once when connection is established
             if (connected && !chatModeSetRef.current) {
                 chatModeSetRef.current = true;
-                console.log('📤 Setting chat mode:', chatMode);
-                socketService.setChatMode(chatMode, initialMessage);
+                console.log('📤 Setting chat mode:', chatMode, 'questionType:', questionType);
+                socketService.setChatMode(chatMode, initialMessage, questionType);
             }
         }, 1000);
 
@@ -147,7 +147,7 @@ export default function ChatScreen({ navigation, route }) {
         }
 
         setIsSending(true);
-        socketService.sendMessage(inputText.trim(), chatMode);
+        socketService.sendMessage(inputText.trim(), chatMode, questionType);
         setInputText('');
     };
 

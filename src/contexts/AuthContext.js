@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from '../services/supabase';
 import socketService from '../services/socket';
+import astrologyDataManager from '../services/astrologyDataManager';
 
 const AuthContext = createContext({});
 
@@ -18,6 +19,7 @@ export const AuthProvider = ({ children }) => {
             
             if (session?.user) {
                 await checkProfileData(session.user.id);
+                await loadAndGenerateTransitChart(session.user.id);
             }
             
             setLoading(false);
@@ -31,8 +33,10 @@ export const AuthProvider = ({ children }) => {
             
             if (session?.user) {
                 await checkProfileData(session.user.id);
+                await loadAndGenerateTransitChart(session.user.id);
             } else {
                 setHasProfileData(false);
+                astrologyDataManager.clear();
             }
             
             setLoading(false);
@@ -108,6 +112,36 @@ export const AuthProvider = ({ children }) => {
         return data;
     };
 
+    const loadAndGenerateTransitChart = async (userId) => {
+        try {
+            const { data, error } = await supabase
+                .from('user_profiles')
+                .select('*')
+                .eq('user_id', userId)
+                .single();
+            
+            if (error && error.code !== 'PGRST116') {
+                console.error('[AuthContext] Error loading user profile for transit:', error);
+                return;
+            }
+            
+            if (data && data.birth_latitude && data.birth_longitude && data.astrology_data) {
+                console.log('[AuthContext] Loading natal chart from database');
+                astrologyDataManager.setNatalChart(data.astrology_data);
+                
+                console.log('[AuthContext] Generating transit chart');
+                astrologyDataManager.generateTransitChart(
+                    data.birth_place,
+                    data.birth_latitude,
+                    data.birth_longitude,
+                    data.timezone
+                );
+            }
+        } catch (error) {
+            console.error('[AuthContext] Error in loadAndGenerateTransitChart:', error);
+        }
+    };
+
     const checkProfileData = async (userId) => {
         setCheckingProfile(true);
         try {
@@ -147,6 +181,7 @@ export const AuthProvider = ({ children }) => {
         saveUserBirthData,
         getUserBirthData,
         checkProfileData,
+        loadAndGenerateTransitChart,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

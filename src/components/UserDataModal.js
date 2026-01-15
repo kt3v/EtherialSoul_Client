@@ -16,6 +16,7 @@ import { DateTime } from 'luxon';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../contexts/AuthContext';
 import { calculateCelestialBodies } from '../services/astrologyService';
+import astrologyDataManager from '../services/astrologyDataManager';
 
 export default function UserDataModal({ visible, onClose, isOnboarding = false, onComplete }) {
     const { user, saveUserBirthData, getUserBirthData } = useAuth();
@@ -78,6 +79,11 @@ export default function UserDataModal({ visible, onClose, isOnboarding = false, 
                     setBirthTime(dt.toFormat('HH:mm'));
                     setDateValue(dt.toJSDate());
                     setTimeValue(dt.toJSDate());
+                    
+                    if (data.astrology_data) {
+                        console.log('[userdata] loading natal chart from existing data');
+                        astrologyDataManager.setNatalChart(data.astrology_data);
+                    }
                     
                     const resultsData = {
                         fullName: data.full_name,
@@ -263,13 +269,23 @@ export default function UserDataModal({ visible, onClose, isOnboarding = false, 
 
             let astrologyData = null;
             try {
-                console.log('[userdata] calculating astrology data...');
+                console.log('[userdata] calculating natal chart...');
                 astrologyData = calculateCelestialBodies(
                     birthDateTime.toISO(),
                     lat,
                     lon
                 );
-                console.log('[userdata] astrology data calculated:', astrologyData);
+                console.log('[userdata] natal chart calculated:', astrologyData);
+                
+                astrologyDataManager.setNatalChart(astrologyData);
+                
+                console.log('[userdata] generating transit chart...');
+                astrologyDataManager.generateTransitChart(
+                    selectedLocation.name,
+                    lat,
+                    lon,
+                    timezoneName
+                );
             } catch (astrologyError) {
                 console.error('[userdata] astrology calculation error:', astrologyError);
             }
@@ -295,6 +311,7 @@ export default function UserDataModal({ visible, onClose, isOnboarding = false, 
                     console.log('[userdata] saving to Supabase...');
                     await saveUserBirthData(resultsData);
                     console.log('[userdata] successfully saved to Supabase');
+                    console.log('[userdata] natal and transit charts stored in memory');
                     
                     // If in onboarding mode, call onComplete and skip results view
                     if (isOnboarding && onComplete) {
