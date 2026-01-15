@@ -4,9 +4,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import AuthModal from '../components/AuthModal';
+import UserDataModal from '../components/UserDataModal';
 
 export default function DashboardScreen({ navigation }) {
     const [authModalVisible, setAuthModalVisible] = useState(false);
+    const [userDataModalVisible, setUserDataModalVisible] = useState(false);
     const { user, signOut } = useAuth();
 
     const handleAuthAction = () => {
@@ -20,6 +22,12 @@ export default function DashboardScreen({ navigation }) {
     return (
         <LinearGradient colors={[COLORS.background, '#0a1a2e']} style={styles.container}>
             <View style={styles.header}>
+                <TouchableOpacity
+                    style={styles.userButton}
+                    onPress={() => setUserDataModalVisible(true)}
+                >
+                    <Text style={styles.userButtonText}>User</Text>
+                </TouchableOpacity>
                 <TouchableOpacity
                     style={styles.loginButton}
                     onPress={handleAuthAction}
@@ -76,6 +84,10 @@ export default function DashboardScreen({ navigation }) {
                 visible={authModalVisible}
                 onClose={() => setAuthModalVisible(false)}
             />
+            <UserDataModal
+                visible={userDataModalVisible}
+                onClose={() => setUserDataModalVisible(false)}
+            />
         </LinearGradient>
     );
 }
@@ -90,6 +102,18 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingTop: 60,
         paddingBottom: 20,
+    },
+    userButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        backgroundColor: COLORS.secondary,
+        borderRadius: 8,
+        marginRight: 12,
+    },
+    userButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
     },
     loginButton: {
         paddingHorizontal: 16,

@@ -1,35 +1,38 @@
 {
-    "name": "etherialsoul-client",
-    "version": "1.0.0",
-    "main": "expo/AppEntry.js",
-    "scripts": {
-        "start": "expo start",
-        "android": "expo start --android",
-        "ios": "expo start --ios",
-        "web": "expo start --web",
-        "build": "expo build",
-        "build:android": "expo build:android",
-        "build:ios": "expo build:ios",
-        "build:web": "expo build:web"
-    },
-    "dependencies": {
-        "@expo/metro-runtime": "~4.0.0",
-        "@react-navigation/bottom-tabs": "^7.2.0",
-        "@react-navigation/native": "^7.0.7",
-        "@supabase/supabase-js": "^2.90.1",
-        "expo": "~52.0.0",
-        "expo-linear-gradient": "~14.0.1",
-        "expo-status-bar": "~2.0.0",
-        "react": "18.3.1",
-        "react-dom": "18.3.1",
-        "react-native": "0.76.5",
-        "react-native-safe-area-context": "^4.14.0",
-        "react-native-screens": "^4.4.0",
-        "react-native-web": "~0.19.13",
-        "socket.io-client": "^4.8.1"
-    },
-    "devDependencies": {
-        "@babel/core": "^7.25.0"
-    },
-    "private": true
+  "name": "etherialsoul-client",
+  "version": "1.0.0",
+  "main": "expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "build": "expo build",
+    "build:android": "expo build:android",
+    "build:ios": "expo build:ios",
+    "build:web": "expo build:web"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "~4.0.0",
+    "@react-native-community/datetimepicker": "8.2.0",
+    "@react-navigation/bottom-tabs": "^7.2.0",
+    "@react-navigation/native": "^7.0.7",
+    "@supabase/supabase-js": "^2.90.1",
+    "expo": "~52.0.0",
+    "expo-linear-gradient": "~14.0.1",
+    "expo-status-bar": "~2.0.0",
+    "geo-tz": "^8.1.5",
+    "luxon": "^3.7.2",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-native": "0.76.5",
+    "react-native-safe-area-context": "^4.14.0",
+    "react-native-screens": "^4.4.0",
+    "react-native-web": "~0.19.13",
+    "socket.io-client": "^4.8.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.0"
+  },
+  "private": true
 }

@@ -54,6 +54,45 @@ export const AuthProvider = ({ children }) => {
         if (error) throw error;
     };
 
+    const saveUserBirthData = async (birthData) => {
+        if (!user) throw new Error('User not authenticated');
+        
+        const { data, error } = await supabase
+            .from('user_profiles')
+            .upsert({
+                user_id: user.id,
+                full_name: birthData.fullName,
+                birth_place: birthData.birthPlace,
+                birth_latitude: birthData.coordinates.latitude,
+                birth_longitude: birthData.coordinates.longitude,
+                timezone: birthData.timezone,
+                birth_date_time: birthData.birthDateTime,
+                utc_offset: birthData.utcOffset,
+                updated_at: new Date().toISOString(),
+            }, {
+                onConflict: 'user_id'
+            });
+        
+        if (error) throw error;
+        return data;
+    };
+
+    const getUserBirthData = async () => {
+        if (!user) return null;
+        
+        const { data, error } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
+        
+        if (error && error.code !== 'PGRST116') {
+            throw error;
+        }
+        
+        return data;
+    };
+
     const value = {
         user,
         session,
@@ -61,6 +100,8 @@ export const AuthProvider = ({ children }) => {
         signUp,
         signIn,
         signOut,
+        saveUserBirthData,
+        getUserBirthData,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
