@@ -166,8 +166,8 @@ export default function ChatScreen({ navigation, route }) {
         // Clear all messages
         setMessages([]);
         
-        // Navigate back to Dashboard
-        navigation.navigate('Dashboard');
+        // Navigate back to Dashboard (nested inside MainTabs)
+        navigation.navigate('MainTabs', { screen: 'Dashboard' });
     };
 
     const renderMessage = ({ item }) => {
