@@ -15,6 +15,7 @@ import { COLORS } from '../theme';
 import { DateTime } from 'luxon';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../contexts/AuthContext';
+import { calculateCelestialBodies } from '../services/astrologyService';
 
 export default function UserDataModal({ visible, onClose }) {
     const { user, saveUserBirthData, getUserBirthData } = useAuth();
@@ -77,6 +78,22 @@ export default function UserDataModal({ visible, onClose }) {
                     setBirthTime(dt.toFormat('HH:mm'));
                     setDateValue(dt.toJSDate());
                     setTimeValue(dt.toJSDate());
+                    
+                    const resultsData = {
+                        fullName: data.full_name,
+                        birthPlace: data.birth_place,
+                        coordinates: {
+                            latitude: data.birth_latitude,
+                            longitude: data.birth_longitude,
+                        },
+                        timezone: data.timezone,
+                        birthDateTime: data.birth_date_time,
+                        utcOffset: data.utc_offset,
+                        localTime: dt.toFormat('yyyy-MM-dd HH:mm:ss'),
+                        astrologyData: data.astrology_data,
+                    };
+                    setResults(resultsData);
+                    setStep('results');
                 }
             }
         } catch (error) {
@@ -244,6 +261,19 @@ export default function UserDataModal({ visible, onClose }) {
                 invalidReason: birthDateTime.invalidReason,
             });
 
+            let astrologyData = null;
+            try {
+                console.log('[userdata] calculating astrology data...');
+                astrologyData = calculateCelestialBodies(
+                    birthDateTime.toISO(),
+                    lat,
+                    lon
+                );
+                console.log('[userdata] astrology data calculated:', astrologyData);
+            } catch (astrologyError) {
+                console.error('[userdata] astrology calculation error:', astrologyError);
+            }
+
             const resultsData = {
                 fullName,
                 birthPlace: selectedLocation.name,
@@ -255,6 +285,7 @@ export default function UserDataModal({ visible, onClose }) {
                 birthDateTime: birthDateTime.toISO(),
                 utcOffset: offsetString,
                 localTime: birthDateTime.toFormat('yyyy-MM-dd HH:mm:ss'),
+                astrologyData: astrologyData,
             };
 
             setResults(resultsData);
@@ -508,6 +539,100 @@ export default function UserDataModal({ visible, onClose }) {
                                     <Text style={styles.resultValue}>UTC{results?.utcOffset} часов</Text>
                                 </View>
 
+                                {results?.astrologyData && (
+                                    <View style={styles.astrologySection}>
+                                        <Text style={styles.astrologySectionTitle}>Астрологические данные</Text>
+                                        
+                                        <View style={styles.astrologyGroup}>
+                                            <Text style={styles.astrologyGroupTitle}>Основные точки</Text>
+                                            <Text style={styles.astrologyItem}>
+                                                ☉ Солнце: {results.astrologyData.sun?.sign} {results.astrologyData.sun?.degree?.toFixed(2)}°
+                                                {results.astrologyData.sun?.house && ` (${results.astrologyData.sun.house} дом)`}
+                                            </Text>
+                                            <Text style={styles.astrologyItem}>
+                                                ☽ Луна: {results.astrologyData.moon?.sign} {results.astrologyData.moon?.degree?.toFixed(2)}°
+                                                {results.astrologyData.moon?.house && ` (${results.astrologyData.moon.house} дом)`}
+                                            </Text>
+                                            <Text style={styles.astrologyItem}>
+                                                ↑ Асцендент: {results.astrologyData.ascendant?.sign} {results.astrologyData.ascendant?.degree?.toFixed(2)}°
+                                            </Text>
+                                            <Text style={styles.astrologyItem}>
+                                                MC Середина неба: {results.astrologyData.midheaven?.sign} {results.astrologyData.midheaven?.degree?.toFixed(2)}°
+                                            </Text>
+                                        </View>
+
+                                        <View style={styles.astrologyGroup}>
+                                            <Text style={styles.astrologyGroupTitle}>Личные планеты</Text>
+                                            <Text style={styles.astrologyItem}>
+                                                ☿ Меркурий: {results.astrologyData.mercury?.sign} {results.astrologyData.mercury?.degree?.toFixed(2)}°
+                                                {results.astrologyData.mercury?.isRetrograde && ' ℞'}
+                                                {results.astrologyData.mercury?.house && ` (${results.astrologyData.mercury.house} дом)`}
+                                            </Text>
+                                            <Text style={styles.astrologyItem}>
+                                                ♀ Венера: {results.astrologyData.venus?.sign} {results.astrologyData.venus?.degree?.toFixed(2)}°
+                                                {results.astrologyData.venus?.isRetrograde && ' ℞'}
+                                                {results.astrologyData.venus?.house && ` (${results.astrologyData.venus.house} дом)`}
+                                            </Text>
+                                            <Text style={styles.astrologyItem}>
+                                                ♂ Марс: {results.astrologyData.mars?.sign} {results.astrologyData.mars?.degree?.toFixed(2)}°
+                                                {results.astrologyData.mars?.isRetrograde && ' ℞'}
+                                                {results.astrologyData.mars?.house && ` (${results.astrologyData.mars.house} дом)`}
+                                            </Text>
+                                        </View>
+
+                                        <View style={styles.astrologyGroup}>
+                                            <Text style={styles.astrologyGroupTitle}>Социальные планеты</Text>
+                                            <Text style={styles.astrologyItem}>
+                                                ♃ Юпитер: {results.astrologyData.jupiter?.sign} {results.astrologyData.jupiter?.degree?.toFixed(2)}°
+                                                {results.astrologyData.jupiter?.isRetrograde && ' ℞'}
+                                                {results.astrologyData.jupiter?.house && ` (${results.astrologyData.jupiter.house} дом)`}
+                                            </Text>
+                                            <Text style={styles.astrologyItem}>
+                                                ♄ Сатурн: {results.astrologyData.saturn?.sign} {results.astrologyData.saturn?.degree?.toFixed(2)}°
+                                                {results.astrologyData.saturn?.isRetrograde && ' ℞'}
+                                                {results.astrologyData.saturn?.house && ` (${results.astrologyData.saturn.house} дом)`}
+                                            </Text>
+                                        </View>
+
+                                        <View style={styles.astrologyGroup}>
+                                            <Text style={styles.astrologyGroupTitle}>Высшие планеты</Text>
+                                            <Text style={styles.astrologyItem}>
+                                                ♅ Уран: {results.astrologyData.uranus?.sign} {results.astrologyData.uranus?.degree?.toFixed(2)}°
+                                                {results.astrologyData.uranus?.isRetrograde && ' ℞'}
+                                                {results.astrologyData.uranus?.house && ` (${results.astrologyData.uranus.house} дом)`}
+                                            </Text>
+                                            <Text style={styles.astrologyItem}>
+                                                ♆ Нептун: {results.astrologyData.neptune?.sign} {results.astrologyData.neptune?.degree?.toFixed(2)}°
+                                                {results.astrologyData.neptune?.isRetrograde && ' ℞'}
+                                                {results.astrologyData.neptune?.house && ` (${results.astrologyData.neptune.house} дом)`}
+                                            </Text>
+                                            <Text style={styles.astrologyItem}>
+                                                ♇ Плутон: {results.astrologyData.pluto?.sign} {results.astrologyData.pluto?.degree?.toFixed(2)}°
+                                                {results.astrologyData.pluto?.isRetrograde && ' ℞'}
+                                                {results.astrologyData.pluto?.house && ` (${results.astrologyData.pluto.house} дом)`}
+                                            </Text>
+                                        </View>
+
+                                        {(results.astrologyData.northnode || results.astrologyData.southnode) && (
+                                            <View style={styles.astrologyGroup}>
+                                                <Text style={styles.astrologyGroupTitle}>Лунные узлы</Text>
+                                                {results.astrologyData.northnode && (
+                                                    <Text style={styles.astrologyItem}>
+                                                        ☊ Северный узел: {results.astrologyData.northnode?.sign} {results.astrologyData.northnode?.degree?.toFixed(2)}°
+                                                        {results.astrologyData.northnode?.house && ` (${results.astrologyData.northnode.house} дом)`}
+                                                    </Text>
+                                                )}
+                                                {results.astrologyData.southnode && (
+                                                    <Text style={styles.astrologyItem}>
+                                                        ☋ Южный узел: {results.astrologyData.southnode?.sign} {results.astrologyData.southnode?.degree?.toFixed(2)}°
+                                                        {results.astrologyData.southnode?.house && ` (${results.astrologyData.southnode.house} дом)`}
+                                                    </Text>
+                                                )}
+                                            </View>
+                                        )}
+                                    </View>
+                                )}
+
                                 <TouchableOpacity
                                     style={styles.resetButton}
                                     onPress={handleReset}
@@ -669,5 +794,35 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: '#fff',
+    },
+    astrologySection: {
+        marginBottom: 20,
+    },
+    astrologySectionTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: COLORS.text,
+        marginBottom: 16,
+        textAlign: 'center',
+    },
+    astrologyGroup: {
+        marginBottom: 16,
+        padding: 16,
+        backgroundColor: COLORS.surfaceLight,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+    },
+    astrologyGroupTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: COLORS.primary,
+        marginBottom: 12,
+    },
+    astrologyItem: {
+        fontSize: 14,
+        color: COLORS.text,
+        marginBottom: 8,
+        lineHeight: 20,
     },
 });

@@ -68,6 +68,7 @@ export const AuthProvider = ({ children }) => {
                 timezone: birthData.timezone,
                 birth_date_time: birthData.birthDateTime,
                 utc_offset: birthData.utcOffset,
+                astrology_data: birthData.astrologyData || null,
                 updated_at: new Date().toISOString(),
             }, {
                 onConflict: 'user_id'

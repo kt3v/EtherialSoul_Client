@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     timezone TEXT,
     birth_date_time TIMESTAMPTZ,
     utc_offset TEXT,
+    astrology_data JSONB,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -18,6 +19,12 @@ CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
 
 -- Enable Row Level Security
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
+
+-- Make policies idempotent for reruns
+DROP POLICY IF EXISTS "Users can view own profile" ON user_profiles;
+DROP POLICY IF EXISTS "Users can insert own profile" ON user_profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON user_profiles;
+DROP POLICY IF EXISTS "Users can delete own profile" ON user_profiles;
 
 -- Create policy: Users can only read their own profile
 CREATE POLICY "Users can view own profile"
@@ -54,6 +61,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Create trigger to call the function before update
+DROP TRIGGER IF EXISTS update_user_profiles_updated_at ON user_profiles;
 CREATE TRIGGER update_user_profiles_updated_at
     BEFORE UPDATE ON user_profiles
     FOR EACH ROW
