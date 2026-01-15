@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useMemo, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,7 +9,8 @@ import UserDataModal from '../components/UserDataModal';
 export default function DashboardScreen({ navigation }) {
     const [authModalVisible, setAuthModalVisible] = useState(false);
     const [userDataModalVisible, setUserDataModalVisible] = useState(false);
-    const { user, signOut } = useAuth();
+    const { user, signOut, hasProfileData, checkingProfile, checkProfileData } = useAuth();
+    const [isOnboarding, setIsOnboarding] = useState(false);
 
     const categories = useMemo(
         () => [
@@ -89,6 +90,17 @@ export default function DashboardScreen({ navigation }) {
         [categories, selectedCategoryKey]
     );
 
+    useEffect(() => {
+        if (user && !checkingProfile) {
+            if (!hasProfileData) {
+                setIsOnboarding(true);
+                setUserDataModalVisible(true);
+            } else {
+                setIsOnboarding(false);
+            }
+        }
+    }, [user, hasProfileData, checkingProfile]);
+
     const handleAuthAction = () => {
         if (user) {
             signOut();
@@ -97,30 +109,79 @@ export default function DashboardScreen({ navigation }) {
         }
     };
 
+    const handleOnboardingComplete = async () => {
+        await checkProfileData(user.id);
+        setIsOnboarding(false);
+        setUserDataModalVisible(false);
+    };
+
+    // Show loading while checking profile
+    if (user && checkingProfile) {
+        return (
+            <LinearGradient colors={[COLORS.background, '#0a1a2e']} style={styles.container}>
+                <View style={styles.centeredLoginContainer}>
+                    <ActivityIndicator size="large" color={COLORS.primary} />
+                    <Text style={styles.loadingText}>Загрузка профиля...</Text>
+                </View>
+            </LinearGradient>
+        );
+    }
+
+    // Render centered login view for unauthenticated users
+    if (!user) {
+        return (
+            <LinearGradient colors={[COLORS.background, '#0a1a2e']} style={styles.container}>
+                <View style={styles.centeredLoginContainer}>
+                    <TouchableOpacity
+                        style={styles.centeredLoginButton}
+                        onPress={() => setAuthModalVisible(true)}
+                    >
+                        <Text style={styles.centeredLoginButtonText}>Login</Text>
+                    </TouchableOpacity>
+                </View>
+                <AuthModal
+                    visible={authModalVisible}
+                    onClose={() => setAuthModalVisible(false)}
+                />
+            </LinearGradient>
+        );
+    }
+
+    // Render onboarding modal if user has no profile data
+    if (user && isOnboarding) {
+        return (
+            <LinearGradient colors={[COLORS.background, '#0a1a2e']} style={styles.container}>
+                <UserDataModal
+                    visible={userDataModalVisible}
+                    onClose={() => {}}
+                    isOnboarding={true}
+                    onComplete={handleOnboardingComplete}
+                />
+            </LinearGradient>
+        );
+    }
+
+    // Render full dashboard for authenticated users
     return (
         <LinearGradient colors={[COLORS.background, '#0a1a2e']} style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity
                     style={styles.chatButton}
-                    onPress={() => navigation.navigate('Chat')}
+                    onPress={() => navigation.navigate('Chat', { chatMode: 'tarot' })}
                 >
                     <Text style={styles.chatButtonText}>Tarot reader chat</Text>
                 </TouchableOpacity>
-                {user ? (
-                    <TouchableOpacity
-                        style={styles.userButton}
-                        onPress={() => setUserDataModalVisible(true)}
-                    >
-                        <Text style={styles.userButtonText}>User</Text>
-                    </TouchableOpacity>
-                ) : null}
                 <TouchableOpacity
-                    style={styles.loginButton}
-                    onPress={handleAuthAction}
+                    style={styles.userButton}
+                    onPress={() => setUserDataModalVisible(true)}
                 >
-                    <Text style={styles.loginButtonText}>
-                        {user ? 'Выйти' : 'Login'}
-                    </Text>
+                    <Text style={styles.userButtonText}>User</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={styles.logoutButton}
+                    onPress={signOut}
+                >
+                    <Text style={styles.logoutButtonText}>Выйти</Text>
                 </TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.content}>
@@ -151,20 +212,21 @@ export default function DashboardScreen({ navigation }) {
                         <TouchableOpacity
                             key={item}
                             style={styles.itemButton}
-                            onPress={() => {}}
+                            onPress={() => navigation.navigate('Chat', { 
+                                chatMode: 'astro',
+                                initialMessage: item 
+                            })}
                         >
                             <Text style={styles.itemButtonText}>{item}</Text>
                         </TouchableOpacity>
                     ))}
                 </View>
             </ScrollView>
-            <AuthModal
-                visible={authModalVisible}
-                onClose={() => setAuthModalVisible(false)}
-            />
             <UserDataModal
                 visible={userDataModalVisible}
                 onClose={() => setUserDataModalVisible(false)}
+                isOnboarding={false}
+                onComplete={handleOnboardingComplete}
             />
         </LinearGradient>
     );
@@ -173,6 +235,32 @@ export default function DashboardScreen({ navigation }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+    centeredLoginContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    centeredLoginButton: {
+        paddingHorizontal: 48,
+        paddingVertical: 16,
+        backgroundColor: COLORS.primary,
+        borderRadius: 16,
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    centeredLoginButtonText: {
+        color: '#fff',
+        fontSize: 20,
+        fontWeight: '700',
+    },
+    loadingText: {
+        color: COLORS.text,
+        fontSize: 16,
+        marginTop: 16,
     },
     header: {
         flexDirection: 'row',
@@ -207,13 +295,13 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
     },
-    loginButton: {
+    logoutButton: {
         paddingHorizontal: 16,
         paddingVertical: 8,
-        backgroundColor: COLORS.primary,
+        backgroundColor: COLORS.error,
         borderRadius: 8,
     },
-    loginButtonText: {
+    logoutButtonText: {
         color: '#fff',
         fontSize: 14,
         fontWeight: '600',

@@ -74,13 +74,30 @@ class SocketService {
         }
     }
 
-    sendMessage(message) {
+    sendMessage(message, chatMode = null) {
         if (!this.socket?.connected) {
             console.error('Socket not connected');
             return;
         }
 
-        this.socket.emit('user_message', { message });
+        const data = { message };
+        if (chatMode) {
+            data.chatMode = chatMode;
+        }
+        this.socket.emit('user_message', data);
+    }
+
+    setChatMode(mode, initialMessage = null) {
+        if (!this.socket?.connected) {
+            console.error('Socket not connected');
+            return;
+        }
+
+        const data = { mode };
+        if (initialMessage) {
+            data.initialMessage = initialMessage;
+        }
+        this.socket.emit('set_chat_mode', data);
     }
 
     sendTypingStatus(isTyping) {
@@ -94,6 +111,14 @@ class SocketService {
             return;
         }
         this.socket.emit('stop_ai_response', {});
+    }
+
+    endChat() {
+        if (!this.socket?.connected) {
+            console.error('Socket not connected');
+            return;
+        }
+        this.socket.emit('end_chat', {});
     }
 
     onMessageReceived(callback) {

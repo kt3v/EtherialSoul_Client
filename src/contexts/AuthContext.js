@@ -8,11 +8,18 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [session, setSession] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [hasProfileData, setHasProfileData] = useState(false);
+    const [checkingProfile, setCheckingProfile] = useState(false);
 
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        supabase.auth.getSession().then(async ({ data: { session } }) => {
             setSession(session);
             setUser(session?.user ?? null);
+            
+            if (session?.user) {
+                await checkProfileData(session.user.id);
+            }
+            
             setLoading(false);
         });
 
@@ -21,6 +28,13 @@ export const AuthProvider = ({ children }) => {
         } = supabase.auth.onAuthStateChange(async (_event, session) => {
             setSession(session);
             setUser(session?.user ?? null);
+            
+            if (session?.user) {
+                await checkProfileData(session.user.id);
+            } else {
+                setHasProfileData(false);
+            }
+            
             setLoading(false);
             
             if (socketService.socket) {
@@ -94,15 +108,45 @@ export const AuthProvider = ({ children }) => {
         return data;
     };
 
+    const checkProfileData = async (userId) => {
+        setCheckingProfile(true);
+        try {
+            const { data, error } = await supabase
+                .from('user_profiles')
+                .select('full_name, birth_date_time')
+                .eq('user_id', userId)
+                .single();
+            
+            if (error && error.code !== 'PGRST116') {
+                console.error('Error checking profile data:', error);
+                setHasProfileData(false);
+                return false;
+            }
+            
+            const hasData = !!(data?.full_name && data?.birth_date_time);
+            setHasProfileData(hasData);
+            return hasData;
+        } catch (error) {
+            console.error('Error checking profile data:', error);
+            setHasProfileData(false);
+            return false;
+        } finally {
+            setCheckingProfile(false);
+        }
+    };
+
     const value = {
         user,
         session,
         loading,
+        hasProfileData,
+        checkingProfile,
         signUp,
         signIn,
         signOut,
         saveUserBirthData,
         getUserBirthData,
+        checkProfileData,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

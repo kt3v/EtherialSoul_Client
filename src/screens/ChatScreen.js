@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../theme';
 import socketService from '../services/socket';
 
-export default function ChatScreen({ navigation }) {
+export default function ChatScreen({ navigation, route }) {
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState('');
     const [isConnected, setIsConnected] = useState(false);
@@ -23,6 +23,9 @@ export default function ChatScreen({ navigation }) {
     const flatListRef = useRef(null);
     const typingTimeoutRef = useRef(null);
     const isTypingRef = useRef(false);
+    const chatModeSetRef = useRef(false);
+    
+    const { chatMode = 'astro', initialMessage } = route.params || {};
 
     useEffect(() => {
         // Set up event listeners FIRST
@@ -73,9 +76,17 @@ export default function ChatScreen({ navigation }) {
         // Connect to WebSocket LAST
         socketService.connect();
 
-        // Check connection status
+        // Check connection status and send chat mode when connected
         const checkConnection = setInterval(() => {
-            setIsConnected(socketService.connected);
+            const connected = socketService.connected;
+            setIsConnected(connected);
+            
+            // Send chat mode once when connection is established
+            if (connected && !chatModeSetRef.current) {
+                chatModeSetRef.current = true;
+                console.log('📤 Setting chat mode:', chatMode);
+                socketService.setChatMode(chatMode, initialMessage);
+            }
         }, 1000);
 
         return () => {
@@ -136,14 +147,27 @@ export default function ChatScreen({ navigation }) {
         }
 
         setIsSending(true);
-        socketService.sendMessage(inputText.trim());
+        socketService.sendMessage(inputText.trim(), chatMode);
         setInputText('');
     };
 
     const handleEndChat = () => {
-        if (!isConnected || !isAIResponding) return;
-        socketService.stopAIResponse();
-        setIsAIResponding(false);
+        // Stop AI response if it's responding
+        if (isAIResponding) {
+            socketService.stopAIResponse();
+            setIsAIResponding(false);
+        }
+        
+        // Send end_chat signal to server
+        if (isConnected) {
+            socketService.endChat();
+        }
+        
+        // Clear all messages
+        setMessages([]);
+        
+        // Navigate back to Dashboard
+        navigation.navigate('Dashboard');
     };
 
     const renderMessage = ({ item }) => {
@@ -177,25 +201,16 @@ export default function ChatScreen({ navigation }) {
         <LinearGradient colors={[COLORS.background, '#1a0a2e']} style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <View style={styles.headerLeft}>
-                    <TouchableOpacity
-                        style={styles.backButton}
-                        onPress={() => navigation.navigate('Dashboard')}
-                    >
-                        <Text style={styles.backButtonText}>←</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}>AI Chat</Text>
+                <TouchableOpacity
+                    style={styles.exitButton}
+                    onPress={handleEndChat}
+                >
+                    <Text style={styles.exitButtonText}>← Exit</Text>
+                </TouchableOpacity>
+                <View style={styles.headerCenter}>
+                    <Text style={styles.headerTitle}>Your spiritual mentor</Text>
                     <View style={[styles.statusDot, isConnected && styles.statusConnected]} />
                 </View>
-                {isAIResponding && (
-                    <TouchableOpacity
-                        style={styles.endChatButton}
-                        onPress={handleEndChat}
-                        disabled={!isConnected}
-                    >
-                        <Text style={styles.endChatButtonText}>End Chat</Text>
-                    </TouchableOpacity>
-                )}
             </View>
 
             {/* Messages List */}
@@ -264,30 +279,33 @@ const styles = StyleSheet.create({
         paddingTop: 60,
         paddingBottom: 20,
     },
-    headerLeft: {
+    exitButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        backgroundColor: '#FF8C42',
+        borderRadius: 12,
+        shadowColor: '#FF8C42',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    exitButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    headerCenter: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
-    },
-    backButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: COLORS.surface,
-        borderColor: COLORS.border,
-        borderWidth: 1,
         justifyContent: 'center',
-        alignItems: 'center',
-    },
-    backButtonText: {
-        fontSize: 20,
-        color: COLORS.text,
-        fontWeight: '800',
-        lineHeight: 22,
+        gap: 8,
+        marginLeft: 12,
     },
     headerTitle: {
-        fontSize: 28,
-        fontWeight: 'bold',
+        fontSize: 20,
+        fontWeight: '700',
         color: COLORS.text,
     },
     statusDot: {
@@ -395,16 +413,5 @@ const styles = StyleSheet.create({
         fontSize: 24,
         color: '#fff',
         fontWeight: 'bold',
-    },
-    endChatButton: {
-        backgroundColor: COLORS.error,
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-    },
-    endChatButtonText: {
-        color: '#fff',
-        fontSize: 14,
-        fontWeight: '600',
     },
 });

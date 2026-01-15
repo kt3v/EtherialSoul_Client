@@ -17,7 +17,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../contexts/AuthContext';
 import { calculateCelestialBodies } from '../services/astrologyService';
 
-export default function UserDataModal({ visible, onClose }) {
+export default function UserDataModal({ visible, onClose, isOnboarding = false, onComplete }) {
     const { user, saveUserBirthData, getUserBirthData } = useAuth();
     const [step, setStep] = useState('form');
     const [fullName, setFullName] = useState('');
@@ -295,6 +295,13 @@ export default function UserDataModal({ visible, onClose }) {
                     console.log('[userdata] saving to Supabase...');
                     await saveUserBirthData(resultsData);
                     console.log('[userdata] successfully saved to Supabase');
+                    
+                    // If in onboarding mode, call onComplete and skip results view
+                    if (isOnboarding && onComplete) {
+                        console.log('[userdata] onboarding complete, calling onComplete');
+                        onComplete();
+                        return;
+                    }
                 } catch (saveError) {
                     console.error('[userdata] error saving to Supabase:', saveError);
                     alert('Данные рассчитаны, но не удалось сохранить в базу данных');
@@ -328,6 +335,10 @@ export default function UserDataModal({ visible, onClose }) {
     };
 
     const handleClose = () => {
+        // Prevent closing in onboarding mode
+        if (isOnboarding) {
+            return;
+        }
         handleReset();
         onClose();
     };
@@ -343,11 +354,13 @@ export default function UserDataModal({ visible, onClose }) {
                 <View style={styles.modalContainer}>
                     <View style={styles.header}>
                         <Text style={styles.title}>
-                            {step === 'form' ? 'Данные пользователя' : 'Результаты'}
+                            {isOnboarding ? 'Добро пожаловать! Введите ваши данные' : (step === 'form' ? 'Данные пользователя' : 'Результаты')}
                         </Text>
-                        <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-                            <Text style={styles.closeButtonText}>✕</Text>
-                        </TouchableOpacity>
+                        {!isOnboarding && (
+                            <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+                                <Text style={styles.closeButtonText}>✕</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
 
                     <ScrollView style={styles.content} keyboardShouldPersistTaps="always" nestedScrollEnabled>
