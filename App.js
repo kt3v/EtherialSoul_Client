@@ -67,7 +67,7 @@ function MainTabs() {
 
 function AppContent() {
     const [authModalVisible, setAuthModalVisible] = useState(false);
-    const { user, signOut } = useAuth();
+    const { user, signOut, hasProfileData, checkingProfile } = useAuth();
 
     const handleAuthAction = () => {
         if (user) {
@@ -95,7 +95,11 @@ function AppContent() {
                 }}
             >
                 <Stack.Navigator screenOptions={{ headerShown: false }}>
-                    <Stack.Screen name="MainTabs" component={MainTabs} />
+                    {user && hasProfileData && !checkingProfile ? (
+                        <Stack.Screen name="MainTabs" component={MainTabs} />
+                    ) : (
+                        <Stack.Screen name="AuthGate" component={DashboardScreen} />
+                    )}
                     <Stack.Screen name="Chat" component={ChatScreen} />
                 </Stack.Navigator>
             </NavigationContainer>
