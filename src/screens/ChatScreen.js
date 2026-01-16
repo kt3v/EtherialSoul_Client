@@ -342,6 +342,8 @@ export default function ChatScreen({ navigation, route }) {
                         multiline
                         maxLength={1000}
                         editable={isConnected && !isSending}
+                        onSubmitEditing={sendMessage}
+                        blurOnSubmit={false}
                     />
                     <TouchableOpacity
                         style={[
