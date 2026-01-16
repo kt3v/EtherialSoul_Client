@@ -321,6 +321,10 @@ export default function ChatScreen({ navigation, route }) {
                         </Text>
                     </View>
                 }
+                initialNumToRender={50}
+                maxToRenderPerBatch={50}
+                windowSize={21}
+                removeClippedSubviews={false}
             />
 
             {/* Input Area */}
