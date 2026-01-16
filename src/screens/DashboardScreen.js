@@ -5,12 +5,18 @@ import { COLORS } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import AuthModal from '../components/AuthModal';
 import UserDataModal from '../components/UserDataModal';
+import { fetchDailyForecast } from '../services/dailyForecastService';
 
 export default function DashboardScreen({ navigation }) {
     const [authModalVisible, setAuthModalVisible] = useState(false);
     const [userDataModalVisible, setUserDataModalVisible] = useState(false);
     const { user, signOut, hasProfileData, checkingProfile, checkProfileData, loading, profileReady } = useAuth();
     const [isOnboarding, setIsOnboarding] = useState(false);
+
+    const [dailyForecast, setDailyForecast] = useState(null);
+    const [dailyForecastTimestamp, setDailyForecastTimestamp] = useState(null);
+    const [dailyForecastLoading, setDailyForecastLoading] = useState(false);
+    const [dailyForecastError, setDailyForecastError] = useState(null);
 
     const categories = useMemo(
         () => [
@@ -113,6 +119,41 @@ export default function DashboardScreen({ navigation }) {
         if (loading) return;
         if (!profileReady) return;
         if (!user) return;
+        if (isOnboarding) return;
+
+        let isCancelled = false;
+
+        const loadDailyForecast = async () => {
+            try {
+                setDailyForecastLoading(true);
+                setDailyForecastError(null);
+
+                const result = await fetchDailyForecast();
+
+                if (isCancelled) return;
+
+                setDailyForecast(result.forecast);
+                setDailyForecastTimestamp(result.timestamp);
+            } catch (error) {
+                if (isCancelled) return;
+                setDailyForecastError(error?.message || 'Failed to fetch daily forecast');
+            } finally {
+                if (isCancelled) return;
+                setDailyForecastLoading(false);
+            }
+        };
+
+        loadDailyForecast();
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [loading, profileReady, user, isOnboarding]);
+
+    useEffect(() => {
+        if (loading) return;
+        if (!profileReady) return;
+        if (!user) return;
 
         if (hasProfileData && isOnboarding) {
             setIsOnboarding(false);
@@ -196,10 +237,40 @@ export default function DashboardScreen({ navigation }) {
                     <Text style={styles.logoutButtonText}>Выйти</Text>
                 </TouchableOpacity>
             </View>
-            <ScrollView contentContainerStyle={styles.content}>
-                <View style={styles.categoriesContainer}>
-                    {categories.map(category => {
-                        const isActive = category.key === selectedCategoryKey;
+             <ScrollView contentContainerStyle={styles.content}>
+                 <View style={styles.dailyForecastCard}>
+                     <Text style={styles.dailyForecastDate}>
+                         {new Date().toLocaleDateString('ru-RU', {
+                             weekday: 'long',
+                             year: 'numeric',
+                             month: 'long',
+                             day: 'numeric',
+                         })}
+                     </Text>
+
+                     {dailyForecastError ? (
+                         <Text style={styles.dailyForecastErrorText}>{dailyForecastError}</Text>
+                     ) : dailyForecast ? (
+                         <Text style={styles.dailyForecastText}>{dailyForecast}</Text>
+                     ) : dailyForecastLoading ? (
+                         <View style={styles.dailyForecastLoadingRow}>
+                             <ActivityIndicator size="small" color={COLORS.primary} />
+                             <Text style={styles.dailyForecastLoadingText}>Загружаю напутствие...</Text>
+                         </View>
+                     ) : (
+                         <Text style={styles.dailyForecastText}>{' '}</Text>
+                     )}
+
+                     {!!dailyForecastTimestamp && (
+                         <Text style={styles.dailyForecastTimestamp}>
+                             Обновлено: {new Date(dailyForecastTimestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                         </Text>
+                     )}
+                 </View>
+
+                 <View style={styles.categoriesContainer}>
+                     {categories.map(category => {
+                         const isActive = category.key === selectedCategoryKey;
                         return (
                             <TouchableOpacity
                                 key={category.key}
@@ -281,7 +352,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingTop: 60,
         paddingBottom: 20,
-    },    userButton: {
+    },
+    userButton: {
         paddingHorizontal: 16,
         paddingVertical: 8,
         backgroundColor: COLORS.secondary,
@@ -307,6 +379,50 @@ const styles = StyleSheet.create({
     content: {
         paddingHorizontal: 20,
         paddingBottom: 32,
+    },
+    dailyForecastCard: {
+        backgroundColor: COLORS.surface,
+        borderColor: COLORS.border,
+        borderWidth: 1,
+        borderRadius: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        marginBottom: 16,
+    },
+    dailyForecastDate: {
+        color: COLORS.text,
+        fontSize: 14,
+        fontWeight: '700',
+        marginBottom: 10,
+        textTransform: 'capitalize',
+    },
+    dailyForecastText: {
+        color: COLORS.text,
+        fontSize: 15,
+        lineHeight: 21,
+        fontWeight: '500',
+    },
+    dailyForecastLoadingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    dailyForecastLoadingText: {
+        color: COLORS.textSecondary,
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    dailyForecastErrorText: {
+        color: COLORS.error,
+        fontSize: 14,
+        lineHeight: 20,
+        fontWeight: '600',
+    },
+    dailyForecastTimestamp: {
+        marginTop: 10,
+        color: COLORS.textSecondary,
+        fontSize: 12,
+        fontWeight: '500',
     },
     categoriesContainer: {
         flexDirection: 'row',
