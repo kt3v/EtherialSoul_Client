@@ -5,6 +5,19 @@ import astrologyDataManager from '../services/astrologyDataManager';
 
 const AuthContext = createContext({});
 
+const withTimeout = (promise, timeoutMs, label) => {
+    let timeoutId;
+    const timeoutPromise = new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+            reject(new Error(`[AuthContext] Timeout after ${timeoutMs}ms: ${label}`));
+        }, timeoutMs);
+    });
+
+    return Promise.race([promise, timeoutPromise]).finally(() => {
+        if (timeoutId) clearTimeout(timeoutId);
+    });
+};
+
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [session, setSession] = useState(null);
@@ -17,51 +30,102 @@ export const AuthProvider = ({ children }) => {
     const [profileReady, setProfileReady] = useState(false);
 
     useEffect(() => {
-        supabase.auth.getSession().then(async ({ data: { session } }) => {
-            setSession(session);
-            setUser(session?.user ?? null);
-            setProfileReady(false);
-            
-            if (session?.user) {
-                await loadUserProfile({ userId: session.user.id });
-                await checkProfileData(session.user.id);
-                await loadAndGenerateTransitChart(session.user.id);
-                setProfileReady(true);
-            } else {
-                setProfileReady(true);
-            }
-            
-            setLoading(false);
-        });
+        let isMounted = true;
 
-        const {
-            data: { subscription },
-        } = supabase.auth.onAuthStateChange(async (_event, session) => {
-            setSession(session);
-            setUser(session?.user ?? null);
-            setProfileReady(false);
-            
-            if (session?.user) {
-                await loadUserProfile({ userId: session.user.id });
-                await checkProfileData(session.user.id);
-                await loadAndGenerateTransitChart(session.user.id);
-                setProfileReady(true);
-            } else {
+        const safe = (fn) => {
+            if (!isMounted) return;
+            fn();
+        };
+
+        const resetAuthState = () => {
+            safe(() => {
+                setSession(null);
+                setUser(null);
                 setHasProfileData(false);
                 setUserProfile(null);
                 setUserProfileLoadedAt(null);
                 setProfileReady(true);
-                astrologyDataManager.clear();
+            });
+            astrologyDataManager.clear();
+        };
+
+        const initAuth = async () => {
+            safe(() => {
+                setLoading(true);
+                setProfileReady(false);
+            });
+
+            try {
+                const { data, error } = await withTimeout(
+                    supabase.auth.getSession(),
+                    10000,
+                    'supabase.auth.getSession()'
+                );
+
+                if (error) throw error;
+
+                const currentSession = data?.session ?? null;
+                safe(() => {
+                    setSession(currentSession);
+                    setUser(currentSession?.user ?? null);
+                });
+
+                if (currentSession?.user) {
+                    await loadUserProfile({ userId: currentSession.user.id });
+                    await checkProfileData(currentSession.user.id);
+                    await loadAndGenerateTransitChart(currentSession.user.id);
+                    safe(() => setProfileReady(true));
+                } else {
+                    safe(() => setProfileReady(true));
+                }
+            } catch (error) {
+                console.error('[AuthContext] initAuth error:', error);
+                resetAuthState();
+            } finally {
+                safe(() => setLoading(false));
             }
-            
-            setLoading(false);
-            
-            if (socketService.socket) {
-                await socketService.reconnect();
+        };
+
+        initAuth();
+
+        const {
+            data: { subscription },
+        } = supabase.auth.onAuthStateChange(async (_event, session) => {
+            safe(() => {
+                setLoading(true);
+                setProfileReady(false);
+            });
+
+            try {
+                safe(() => {
+                    setSession(session);
+                    setUser(session?.user ?? null);
+                });
+
+                if (session?.user) {
+                    await loadUserProfile({ userId: session.user.id });
+                    await checkProfileData(session.user.id);
+                    await loadAndGenerateTransitChart(session.user.id);
+                    safe(() => setProfileReady(true));
+                } else {
+                    resetAuthState();
+                }
+
+                if (socketService.socket) {
+                    await socketService.reconnect();
+                }
+            } catch (error) {
+                console.error('[AuthContext] onAuthStateChange error:', error);
+                resetAuthState();
+            } finally {
+                safe(() => setLoading(false));
             }
         });
 
-        return () => subscription.unsubscribe();
+        return () => {
+            isMounted = false;
+            subscription.unsubscribe();
+        };
     }, []);
 
     const signUp = async (email, password) => {
