@@ -26,7 +26,7 @@ export const SOCKET_URL = useLocalServer ? 'http://localhost:3000' : 'https://et
 // API configuration
 export const API_CONFIG = {
     baseURL: useLocalServer ? 'http://localhost:3000' : 'https://etherial-vqt7t.ondigitalocean.app',
-    timeout: 10000,
+    timeout: 45000,
 };
 
 // Supabase configuration
