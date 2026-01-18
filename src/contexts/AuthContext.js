@@ -18,6 +18,23 @@ const withTimeout = (promise, timeoutMs, label) => {
     });
 };
 
+const retryWithBackoff = async (fn, maxRetries = 3, initialDelay = 1000, label = '') => {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            return await fn();
+        } catch (error) {
+            const isLastAttempt = attempt === maxRetries - 1;
+            if (isLastAttempt) {
+                throw error;
+            }
+            
+            const delay = initialDelay * Math.pow(2, attempt);
+            console.warn(`[AuthContext] ${label} failed (attempt ${attempt + 1}/${maxRetries}), retrying in ${delay}ms...`, error);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+};
+
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [session, setSession] = useState(null);
@@ -56,13 +73,24 @@ export const AuthProvider = ({ children }) => {
             });
 
             try {
-                const { data, error } = await withTimeout(
-                    supabase.auth.getSession(),
-                    10000,
-                    'supabase.auth.getSession()'
+                const { data, error } = await retryWithBackoff(
+                    async () => {
+                        return await withTimeout(
+                            supabase.auth.getSession(),
+                            15000,
+                            'supabase.auth.getSession()'
+                        );
+                    },
+                    3,
+                    1000,
+                    'getSession'
                 );
 
-                if (error) throw error;
+                if (error) {
+                    console.error('[AuthContext] Session error, clearing corrupted session:', error);
+                    await supabase.auth.signOut();
+                    throw error;
+                }
 
                 const currentSession = data?.session ?? null;
                 safe(() => {
